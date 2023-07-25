@@ -55,6 +55,7 @@ message CountDownResp {
 message GameStateResp {
   ErrorCode code = 3;
   int32 state = 1;
+  TableInfo tableInfo = 4;
 }
 
 // 方块数据

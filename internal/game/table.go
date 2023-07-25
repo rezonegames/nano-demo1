@@ -82,7 +82,8 @@ func (t *Table) run() {
 func (t *Table) broadcastTableState(s int32) {
 	t.state = s
 	t.group.Broadcast("onStateChange", &proto.GameStateResp{
-		State: t.state,
+		State:     t.state,
+		TableInfo: t.getInfo(),
 	})
 }
 

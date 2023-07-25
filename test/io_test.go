@@ -58,6 +58,7 @@ func client(deviceId, rid string) {
 	chLogin := make(chan struct{})
 	chEnd := make(chan interface{}, 0)
 
+	var teamId int32
 	uid := loginResp.UserId
 	state := consts.IDLE
 	if uid == 0 {
@@ -92,6 +93,13 @@ func client(deviceId, rid string) {
 		v := proto2.GameStateResp{}
 		ss.Unmarshal(data.([]byte), &v)
 		state = v.State
+		tableInfo := v.TableInfo
+
+		for k, v := range tableInfo.Players {
+			if k == uid {
+				teamId = v.TeamId
+			}
+		}
 		fmt.Println(deviceId, "onStateChange", v.State)
 	})
 
@@ -104,7 +112,10 @@ func client(deviceId, rid string) {
 	c.On("onTeamLose", func(data interface{}) {
 		v := proto2.TeamLose{}
 		ss.Unmarshal(data.([]byte), &v)
-		chEnd <- struct{}{}
+
+		if v.TeamId == teamId {
+			chEnd <- struct{}{}
+		}
 	})
 
 	ra := z.RandInt(6, 20)
@@ -143,10 +154,10 @@ func client(deviceId, rid string) {
 func TestIO(t *testing.T) {
 
 	// wait server startup
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 6; i++ {
 		time.Sleep(50 * time.Millisecond)
 		go func(index int) {
-			client(fmt.Sprintf("test%d", index), "r1")
+			client(fmt.Sprintf("test%d", index), "r3")
 		}(i)
 	}
 
