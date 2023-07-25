@@ -1,0 +1,100 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+import "error.proto";
+package proto;
+option go_package = "/proto";
+
+message Ping {
+}
+
+message Pong {
+  int64 timeStamp = 1;
+}
+
+message Empty {
+
+}
+
+message LoginToGameReq {
+  int64 userId = 1;
+}
+
+message Player {
+  string name = 1;
+  int32 coin = 2;
+  int64 userId = 3;
+  int64 updatedAt = 4;
+}
+message LoginToGameResp {
+  ErrorCode code = 3;
+  Player player = 1;
+}
+
+message RegisterGameReq {
+  string name = 1;
+  string accountId = 2;
+}
+
+message Room {
+  string roomId = 1;
+  int32 pvp = 2;
+  string name = 3;
+  int32 minCoin = 4;
+}
+
+message GetRoomListResp {
+  ErrorCode code = 3;
+  repeated Room roomList = 1;
+}
+
+message CountDownResp {
+  ErrorCode code = 3;
+  int32 counter = 1;
+}
+
+message GameStateResp {
+  ErrorCode code = 3;
+  int32 state = 1;
+}
+
+// 方块数据
+message State {
+  message Arena {
+    repeated google.protobuf.Any matrix = 1;
+  }
+  message Pos {
+    uint32 x = 1;
+    uint32 y = 2;
+  }
+  message Player {
+    repeated google.protobuf.Any matrix = 1;
+    Pos pos = 2;
+    uint32 score = 3;
+  }
+
+  Arena arena = 1;
+  Player player = 2;
+}
+
+message UpdateState {
+  string type = 1;
+  string fragment = 2;
+  repeated google.protobuf.Any state = 3;
+  bool end = 4;
+}
+
+message TableInfo {
+  message Player {
+    int32 teamId = 1;
+    State state = 2;
+    bool end = 3;
+    int32 score = 4;
+  }
+  map<int64, Player> players = 1;
+  string tableId = 2;
+  int32 tableState = 3;
+}
+
+message TeamLose {
+  int32 teamId = 1;
+}
