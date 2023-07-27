@@ -11,11 +11,11 @@ message Pong {
   int64 timeStamp = 1;
 }
 
-message Empty {
-
+message Join {
+  string roomId = 1;
 }
 
-message LoginToGameReq {
+message LoginToGame {
   int64 userId = 1;
 }
 
@@ -78,6 +78,8 @@ message State {
 }
 
 message UpdateState {
+  string roomId = 5;
+  string tableId = 6;
   string type = 1;
   string fragment = 2;
   repeated google.protobuf.Any state = 3;

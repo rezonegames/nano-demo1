@@ -1,14 +1,5 @@
 package consts
 
-// 配置文件名字
-const (
-	ROOM_CONFIG = "rooms"
-)
-
-const (
-	PLAYER_KEY = "player"
-)
-
 // 第三方登录渠道
 const (
 	DEVICEID = iota
@@ -22,6 +13,18 @@ const (
 	IDLE int32 = iota
 	WAIT
 	COUNTDOWN
-	GAMEING
+	GAMING
 	SETTLEMENT
+)
+
+// 房间类型
+const (
+	QUICK int32 = iota + 1
+	MATHCH
+)
+
+// 桌子类型
+const (
+	NORMAL int32 = iota + 1
+	HAPPY
 )

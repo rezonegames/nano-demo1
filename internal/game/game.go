@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"tetris/config"
+	"tetris/internal/game/room"
+	service2 "tetris/internal/game/service"
 	"tetris/pkg/log"
 )
 
@@ -18,7 +20,7 @@ func StartUp() {
 
 	// gate
 	{
-		service := newGateService()
+		service := service2.NewGateService()
 		opts := []component.Option{
 			component.WithName("g"),
 			component.WithNameFunc(func(s string) string {
@@ -30,16 +32,18 @@ func StartUp() {
 
 	// rooms
 	{
-		for _, v := range sc.Rooms {
-			service := newRoomService(v)
-			opts := []component.Option{
-				component.WithName(service.serviceName),
-				component.WithNameFunc(func(s string) string {
-					return strings.ToLower(s)
-				}),
-			}
-			services.Register(service, opts...)
+		service := service2.NewRoomService()
+		opts := []component.Option{
+			component.WithName("r"),
+			component.WithNameFunc(func(s string) string {
+				return strings.ToLower(s)
+			}),
 		}
+		for _, v := range sc.Rooms {
+			r, _ := room.NewRoom(v)
+			service.AddRoomEntity(v.RoomId, r)
+		}
+		services.Register(service, opts...)
 	}
 
 	opts := []nano.Option{

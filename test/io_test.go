@@ -59,6 +59,7 @@ func client(deviceId, rid string) {
 	chEnd := make(chan interface{}, 0)
 
 	var teamId int32
+	var tableId string
 	uid := loginResp.UserId
 	state := consts.IDLE
 	if uid == 0 {
@@ -71,7 +72,7 @@ func client(deviceId, rid string) {
 			fmt.Println(deviceId, "register", v.Player.Name, v.Player.UserId, v.Player.Coin)
 		})
 	} else {
-		c.Request("g.login", &proto2.LoginToGameReq{UserId: uid}, func(data interface{}) {
+		c.Request("g.login", &proto2.LoginToGame{UserId: uid}, func(data interface{}) {
 			chLogin <- struct{}{}
 			v := proto2.LoginToGameResp{}
 			ss.Unmarshal(data.([]byte), &v)
@@ -100,10 +101,13 @@ func client(deviceId, rid string) {
 				teamId = v.TeamId
 			}
 		}
+		tableId = tableInfo.TableId
 		fmt.Println(deviceId, "onStateChange", v.State)
 	})
 
-	c.Request(rid+".quickstart", &proto2.Empty{}, func(data interface{}) {
+	c.Request("r.quickstart", &proto2.Join{
+		RoomId: rid,
+	}, func(data interface{}) {
 		v := proto2.GameStateResp{}
 		ss.Unmarshal(data.([]byte), &v)
 		fmt.Println(deviceId, "quickstart", v.State)
@@ -137,9 +141,11 @@ func client(deviceId, rid string) {
 				//fmt.Println("pong", v.TimeStamp)
 			})
 		case <-ticker.C:
-			if state == consts.GAMEING {
-				c.Request(rid+".updatestate", &proto2.UpdateState{
-					End: true,
+			if state == consts.GAMING {
+				c.Request("r.updatestate", &proto2.UpdateState{
+					RoomId:  rid,
+					TableId: tableId,
+					End:     true,
 					//Data: nil,
 				}, func(data interface{}) {
 					fmt.Println(deviceId, "syncmessage")
@@ -157,7 +163,7 @@ func TestIO(t *testing.T) {
 	for i := 0; i < 6; i++ {
 		time.Sleep(50 * time.Millisecond)
 		go func(index int) {
-			client(fmt.Sprintf("test%d", index), "r3")
+			client(fmt.Sprintf("test%d", index), "3")
 		}(i)
 	}
 
