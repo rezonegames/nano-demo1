@@ -15,7 +15,7 @@ var (
 
 	DB_NAME     = ""
 	COL_ACCOUNT = "accounts"
-	COL_PLAYER  = "players"
+	COL_PROFILE = "profiles"
 	COL_COUNTER = "counters"
 )
 

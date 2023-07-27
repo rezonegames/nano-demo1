@@ -7,8 +7,8 @@ import (
 	"tetris/proto/proto"
 )
 
-func ConvPlayerToProtoPlayer(pp *models.Player) *proto.Player {
-	return &proto.Player{
+func ConvPlayerToProtoPlayer(pp *models.Profile) *proto.Profile {
+	return &proto.Profile{
 		Name:   pp.Name,
 		Coin:   pp.Coin,
 		UserId: pp.UserId,

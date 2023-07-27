@@ -14,14 +14,14 @@ type Counter struct {
 	Count int64  `bson:"count"`
 }
 
-type Player struct {
+type Profile struct {
 	Name      string `bson:"name" json:"name"`
 	Coin      int32  `bson:"coin" json:"coin"`
 	UserId    int64  `bson:"_id" json:"user_id"`
 	UpdatedAt int64  `bson:"updated_at" json:"updated_at"`
 }
 
-func GetPlayer(userId int64, fields ...string) (*Player, error) {
+func GetPlayer(userId int64, fields ...string) (*Profile, error) {
 	filter := bson.M{
 		"_id": userId,
 	}
@@ -31,8 +31,8 @@ func GetPlayer(userId int64, fields ...string) (*Player, error) {
 		projection[field] = 1
 	}
 	opts.Projection = projection
-	p := &Player{}
-	err := mclient.FindOne(p, DB_NAME, COL_PLAYER, filter, opts)
+	p := &Profile{}
+	err := mclient.FindOne(p, DB_NAME, COL_PROFILE, filter, opts)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, z.NilError{Msg: fmt.Sprintf("%d", userId)}
@@ -42,8 +42,8 @@ func GetPlayer(userId int64, fields ...string) (*Player, error) {
 	return p, nil
 }
 
-func NewPlayer(name string, coin int32) *Player {
-	return &Player{
+func NewPlayer(name string, coin int32) *Profile {
+	return &Profile{
 		Name: name,
 		Coin: coin,
 	}
@@ -54,11 +54,11 @@ func UpdatePlayer(userId int64, fieldMap map[string]interface{}) error {
 		"_id": userId,
 	}
 	fieldMap["updated_at"] = z.NowUnixMilli()
-	err := mclient.UpsertOne(DB_NAME, COL_PLAYER, filter, fieldMap)
+	err := mclient.UpsertOne(DB_NAME, COL_PROFILE, filter, fieldMap)
 	return err
 }
 
-func CreatePlayer(player *Player) (int64, error) {
+func CreatePlayer(player *Profile) (int64, error) {
 	filter := bson.M{
 		"_id": "_id",
 	}
@@ -79,6 +79,6 @@ func CreatePlayer(player *Player) (int64, error) {
 	}
 	uid := counter.Count
 	player.UserId = uid
-	_, err = mclient.InsertOne(DB_NAME, COL_PLAYER, player)
+	_, err = mclient.InsertOne(DB_NAME, COL_PROFILE, player)
 	return uid, err
 }

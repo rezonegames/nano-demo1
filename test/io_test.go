@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"github.com/lonng/nano/benchmark/io"
 	"github.com/lonng/nano/serialize/protobuf"
-	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
+	"sync"
 	"testing"
 	"tetris/consts"
 	"tetris/pkg/z"
@@ -18,7 +15,8 @@ import (
 	"time"
 )
 
-func client(deviceId, rid string) {
+func client(deviceId, rid string, wg sync.WaitGroup) {
+	defer wg.Done()
 	ss := protobuf.NewSerializer()
 
 	url := "http://127.0.0.1:8000/v1/user/login/query"
@@ -80,7 +78,7 @@ func client(deviceId, rid string) {
 		})
 	}
 	<-chLogin
-	//c.On("pong", func(data interface{}) {})
+	c.On("pong", func(data interface{}) {})
 
 	// 倒计时
 	c.On("onCountDown", func(data interface{}) {
@@ -122,11 +120,18 @@ func client(deviceId, rid string) {
 		}
 	})
 
-	ra := z.RandInt(6, 20)
+	c.On("onStateUpdate", func(data interface{}) {
+		v := proto2.UpdateState{}
+		ss.Unmarshal(data.([]byte), &v)
+		fmt.Println(z.ToString(v))
+	})
+
+	ra := z.RandInt(6, 10)
 	ticker := time.NewTicker(time.Duration(ra) * time.Second)
 	defer ticker.Stop()
 	ticker1 := time.NewTicker(time.Second * 5)
 	defer ticker1.Stop()
+
 	for /*i := 0; i < 1; i++*/ {
 
 		select {
@@ -142,10 +147,28 @@ func client(deviceId, rid string) {
 			})
 		case <-ticker.C:
 			if state == consts.GAMING {
+
+				m := make([]*proto2.Array, 0)
+				m = append(m, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 0}, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 1})
+
 				c.Request("r.updatestate", &proto2.UpdateState{
-					RoomId:  rid,
-					TableId: tableId,
-					End:     true,
+					RoomId:   rid,
+					TableId:  tableId,
+					PlayerId: uid,
+
+					Fragment: "all",
+					Player: &proto2.Player{
+						Matrix: m,
+						Pos: &proto2.Pos{
+							X: 1,
+							Y: 2,
+						},
+						Score: 10,
+					},
+
+					Arena: m,
+
+					End: true,
 					//Data: nil,
 				}, func(data interface{}) {
 					fmt.Println(deviceId, "syncmessage")
@@ -157,22 +180,40 @@ func client(deviceId, rid string) {
 	}
 }
 
+//func TestMatrix(t *testing.T) {
+//	//xx := `[[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0]]`
+//
+//	m := make([]*proto2.Array, 0)
+//	m = append(m, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 0}, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 1})
+//
+//	us := proto2.UpdateState{
+//		Player: &proto2.Player{
+//			Matrix: m,
+//			Pos: &proto2.Pos{
+//				X: 1,
+//				Y: 2,
+//			},
+//			Score: 0,
+//		},
+//	}
+//
+//	//err := json.Unmarshal([]byte(uss), &us)
+//	fmt.Println(z.ToString(us))
+//}
+
 func TestIO(t *testing.T) {
 
 	// wait server startup
+	wg := sync.WaitGroup{}
 	for i := 0; i < 6; i++ {
+		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		go func(index int) {
-			client(fmt.Sprintf("test%d", index), "3")
+			client(fmt.Sprintf("test%d", index), "3", wg)
 		}(i)
 	}
 
-	log.SetFlags(log.LstdFlags | log.Llongfile)
-
-	sg := make(chan os.Signal)
-	signal.Notify(sg, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL)
-
-	<-sg
+	wg.Wait()
 
 	t.Log("exit")
 }

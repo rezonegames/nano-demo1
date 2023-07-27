@@ -74,7 +74,7 @@ func (g *GateService) Login(s *session.Session, req *proto.LoginToGame) error {
 	return s.Response(&proto.LoginToGameResp{Player: util.ConvPlayerToProtoPlayer(pp)})
 }
 
-func (g *GateService) rooms(s *session.Session, _ interface{}) error {
+func (g *GateService) Rooms(s *session.Session, _ interface{}) error {
 	return s.Response(&proto.GetRoomListResp{RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms)})
 }
 

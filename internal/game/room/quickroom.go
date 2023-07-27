@@ -25,6 +25,7 @@ func newQuickRoom(conf *config.Room) *QuickRoom {
 		tables: make(map[string]TableEntity, 0),
 	}
 	go r.run()
+	log.Info(conf.Dump())
 	return r
 }
 
@@ -83,6 +84,11 @@ func (r *QuickRoom) Leave(s *session.Session) error {
 			r.queue = append(r.queue[:i], r.queue[:i+1]...)
 			log.Info("removeFromQueue1 %d", s.UID())
 			break
+		}
+	}
+	if tid := util.GetSessionTableId(s); tid != "" {
+		if t, err := r.table(tid); err == nil {
+			t.leave(s)
 		}
 	}
 	return nil

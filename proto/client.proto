@@ -1,5 +1,4 @@
 syntax = "proto3";
-import "google/protobuf/any.proto";
 import "error.proto";
 package proto;
 option go_package = "/proto";
@@ -19,7 +18,7 @@ message LoginToGame {
   int64 userId = 1;
 }
 
-message Player {
+message Profile {
   string name = 1;
   int32 coin = 2;
   int64 userId = 3;
@@ -27,7 +26,7 @@ message Player {
 }
 message LoginToGameResp {
   ErrorCode code = 3;
-  Player player = 1;
+  Profile player = 1;
 }
 
 message RegisterGameReq {
@@ -58,32 +57,41 @@ message GameStateResp {
   TableInfo tableInfo = 4;
 }
 
-// 方块数据
-message State {
-  message Arena {
-    repeated google.protobuf.Any matrix = 1;
-  }
-  message Pos {
-    uint32 x = 1;
-    uint32 y = 2;
-  }
-  message Player {
-    repeated google.protobuf.Any matrix = 1;
-    Pos pos = 2;
-    uint32 score = 3;
-  }
+// TwoArray 二维数组[1:[0,0],2:[0,0]]
+message Array {
+  repeated uint32 v = 1;
+  int32 i =2;
+}
 
-  Arena arena = 1;
+//Pos 坐标
+message Pos {
+  uint32 x = 1;
+  uint32 y = 2;
+}
+
+message Player {
+  repeated Array matrix = 1;
+  Pos pos = 2;
+  uint32 score = 3;
+}
+
+message State {
+  repeated Array arena = 1;
   Player player = 2;
 }
 
+// UpdateState 玩家上传的方块数据
 message UpdateState {
-  string roomId = 5;
-  string tableId = 6;
-  string type = 1;
-  string fragment = 2;
-  repeated google.protobuf.Any state = 3;
-  bool end = 4;
+  string roomId = 1;
+  string tableId = 2;
+  // fragment=player|arena|all
+  string fragment = 3;
+  // pos|matrix|score
+  Player player = 4;
+  // arena
+  repeated Array arena = 5;
+  int64 playerId = 6;
+  bool end = 10;
 }
 
 message TableInfo {
@@ -93,7 +101,7 @@ message TableInfo {
     bool end = 3;
     int32 score = 4;
   }
-  map<int64, Player> players = 1;
+  map<int64, Player>  players = 1;
   string tableId = 2;
   int32 tableState = 3;
 }

@@ -1,5 +1,7 @@
 package config
 
+import "fmt"
+
 type Server struct {
 	AppName         string        `yaml:"appName"`
 	IsDebug         bool          `yaml:"isDebug"`
@@ -34,4 +36,8 @@ type Room struct {
 	MinCoin   int32  `yaml:"minCoin"`
 	RoomType  int32  `yaml:"roomType"`
 	TableType int32  `yaml:"tableType"`
+}
+
+func (r *Room) Dump() string {
+	return fmt.Sprintf("roomId %s pvp:divide %d:%d roomType %d tableType %d", r.RoomId, r.Pvp, r.Divide, r.RoomType, r.TableType)
 }

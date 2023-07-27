@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/lonng/nano"
 	"github.com/lonng/nano/session"
+	"sync"
 	"tetris/config"
 	"tetris/consts"
 	"tetris/internal/game/util"
@@ -22,7 +23,7 @@ type Table struct {
 	loseCount     int32
 	teamGroupSize int32
 	state         int32 // 从countdown =》settlement 结束
-
+	lock          sync.RWMutex
 }
 
 func newNormalTable(conf *config.Room, ss []*session.Session) *Table {
@@ -52,9 +53,9 @@ func newNormalTable(conf *config.Room, ss []*session.Session) *Table {
 }
 
 func (t *Table) run() {
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 3; i++ {
 		t.group.Broadcast("onCountDown", &proto.CountDownResp{
-			Counter: int32(5 - i),
+			Counter: int32(3 - i),
 		})
 		time.Sleep(time.Second)
 	}
@@ -70,43 +71,52 @@ func (t *Table) broadcastTableState(s int32) {
 	})
 }
 
+func (t *Table) clientEnd(teamId int32) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	isTeamLose := true
+	for _, v := range t.clients {
+		if v.getTeamId() == teamId {
+			if !v.isEnd() {
+				isTeamLose = false
+			}
+		}
+	}
+	// onTeamLose
+	if isTeamLose {
+		t.loseCount++
+		t.group.Broadcast("onTeamLose", &proto.TeamLose{TeamId: teamId})
+		log.Info("队伍 %d 结束", teamId)
+	}
+
+	if t.loseCount >= t.teamGroupSize-1 {
+		t.broadcastTableState(consts.SETTLEMENT)
+		log.Info("本轮结束 %s", t.tableId)
+	}
+}
+
+func (t *Table) getClient(uid int64) *Client {
+	return t.clients[uid]
+}
+
 func (t *Table) updateState(s *session.Session, msg *proto.UpdateState) error {
 	// Sync message to all members in this room
 	uid := s.UID()
-	p := t.clients[uid].player
-	teamId := p.TeamId
-	p.End = msg.End
+	c := t.getClient(uid)
+	c.save(msg)
+	teamId := c.getTeamId()
 	log.Info("updateState %d %d %v", uid, teamId, z.ToString(msg))
-
-	if msg.End {
-		isTeamLose := true
-		for _, v := range t.clients {
-			if v.player.TeamId == teamId {
-				if !v.player.End {
-					isTeamLose = false
-				}
-			}
-		}
-		// onTeamLose
-		if isTeamLose {
-			t.loseCount++
-			t.group.Broadcast("onTeamLose", &proto.TeamLose{TeamId: teamId})
-			log.Info("队伍 %d 结束", teamId)
-		}
-
-		if t.loseCount == t.teamGroupSize-1 {
-			t.broadcastTableState(consts.SETTLEMENT)
-			log.Info("本轮结束 %s", t.tableId)
-			return nil
-		}
+	if c.isEnd() {
+		t.clientEnd(teamId)
 	}
-	return nil
+	return t.group.Broadcast("onStateUpdate", msg)
 }
 
 func (t *Table) clear() {
 	t.group.Close()
 	for _, v := range t.clients {
-		v.Set("tid", "")
+		util.SetSessionTableId(v.Session, "")
 	}
 }
 
@@ -120,13 +130,13 @@ func (t *Table) join(s *session.Session, tableId string) error {
 }
 
 func (t *Table) canDestory() bool {
-	return t.state == consts.SETTLEMENT
+	return t.state == consts.SETTLEMENT || t.group.Count() == 0
 }
 
 func (t *Table) getInfo() *proto.TableInfo {
 	players := make(map[int64]*proto.TableInfo_Player, 0)
 	for k, v := range t.clients {
-		players[k] = v.player
+		players[k] = v.getPlayer()
 	}
 	return &proto.TableInfo{
 		Players:    players,
