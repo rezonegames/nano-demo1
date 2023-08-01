@@ -53,13 +53,14 @@ func newNormalTable(conf *config.Room, ss []*session.Session) *Table {
 }
 
 func (t *Table) run() {
+	t.broadcastTableState(consts.COUNTDOWN)
+	time.Sleep(50 * time.Millisecond)
 	for i := 0; i < 3; i++ {
 		t.group.Broadcast("onCountDown", &proto.CountDownResp{
 			Counter: int32(3 - i),
 		})
 		time.Sleep(time.Second)
 	}
-
 	t.broadcastTableState(consts.GAMING)
 }
 
