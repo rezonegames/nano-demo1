@@ -4,16 +4,16 @@ go 1.18
 
 require (
 	github.com/getsentry/raven-go v0.2.0
+	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/gorilla/mux v1.8.0
 	github.com/lonng/nano v0.5.1
-	github.com/lonng/nex v1.4.1
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.5
 	go.mongodb.org/mongo-driver v1.12.0
 	golang.org/x/net v0.10.0
+	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -57,9 +57,6 @@ require (
 	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/genproto v0.0.0-20210630183607-d20f26d13c79 // indirect
 	google.golang.org/grpc v1.39.0 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
 )
 
-replace (
-	"github.com/lonng/nano" => "../nano"
-)
+replace github.com/lonng/nano => ../nano

@@ -48,8 +48,8 @@ func StartUp() {
 
 	opts := []nano.Option{
 		// websocket
-		//nano.WithWSPath("/nano"),
-		//nano.WithIsWebsocket(true),
+		nano.WithWSPath("/nano"),
+		nano.WithIsWebsocket(true),
 		// 心跳
 		//nano.WithHeartbeatInterval(5 * time.Second),
 		//nano.WithDebugMode(),

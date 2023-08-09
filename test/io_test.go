@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/lonng/nano/benchmark/io"
 	"github.com/lonng/nano/serialize/protobuf"
+	"io/ioutil"
 	"net/http"
 	"sync"
 	"testing"
@@ -216,4 +217,39 @@ func TestIO(t *testing.T) {
 	wg.Wait()
 
 	t.Log("exit")
+}
+
+func TestNet(t *testing.T) {
+	al := proto2.AccountLoginReq{
+		Partition: 0,
+		AccountId: "11111",
+	}
+
+	s := protobuf.NewSerializer()
+	data, err := s.Marshal(&al)
+	if err != nil {
+		fmt.Println("创建失败", err)
+	}
+	c := &http.Client{}
+
+	url := "http://127.0.0.1:8000/v1/login"
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		fmt.Println("请求失败", err)
+	}
+	req.Header.Set("Content-Type", "application/x-protobuf")
+	resp, err := c.Do(req)
+	if err != nil {
+		fmt.Println("发送请求失败", err)
+	}
+
+	respData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Sprintf("Error reading response body: %v", err)
+	}
+	respMsg := &proto2.AccountLoginResp{}
+	if err := s.Unmarshal(respData, respMsg); err != nil {
+		fmt.Sprintf("Error unmarshaling response: %v", err)
+	}
+	defer resp.Body.Close()
 }

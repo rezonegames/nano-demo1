@@ -7,5 +7,6 @@ enum ErrorCode {
   None = 0;
   DBError = 1;
   UnknownError = 2;
-  AccountIdError = 3;
+  ParameterError = 3;
+  AccountIdError = 4;
 }

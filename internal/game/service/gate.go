@@ -79,5 +79,5 @@ func (g *GateService) Rooms(s *session.Session, _ interface{}) error {
 }
 
 func (g *GateService) Ping(s *session.Session, _ *proto.Ping) error {
-	return s.Response(&proto.Pong{TimeStamp: z.NowUnixMilli()})
+	return s.Response(&proto.Pong{Ts: z.NowUnixMilli()})
 }

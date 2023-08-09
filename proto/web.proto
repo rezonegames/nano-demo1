@@ -11,7 +11,5 @@ message AccountLoginReq {
 message AccountLoginResp {
   ErrorCode code = 5;
   int64 userId = 1;
-  string host = 2;
-  string port = 3;
-  string accountId = 4;
+  string addr = 2;
 }

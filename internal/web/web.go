@@ -1,9 +1,8 @@
 package web
 
 import (
-	"context"
-	"encoding/json"
-	"github.com/lonng/nex"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,52 +12,34 @@ import (
 	"tetris/pkg/log"
 )
 
-func startupService() http.Handler {
-	var (
-		mux = http.NewServeMux()
-	)
-
-	nex.Before(logRequest)
-	mux.Handle("/v1/user/", api.MakeLoginService())
-	return AccessControl(OptionControl(mux))
-}
-
-func logRequest(ctx context.Context, r *http.Request) (context.Context, error) {
-	if uri := r.RequestURI; uri != "/ping" {
-		log.Debug("Method=%s, RemoteAddr=%s URL=%s", r.Method, r.RemoteAddr, uri)
-	}
-	return ctx, nil
-}
-
-func AccessControl(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
-
-		h.ServeHTTP(w, r)
-	})
-}
-
-func OptionControl(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodOptions {
-			json.NewEncoder(w).Encode(`{ "code": 0, "data": "success"}`)
-			return
-		}
-
-		h.ServeHTTP(w, r)
-	})
+func Register(r *gin.Engine) {
+	/**
+	 */
+	r.POST("/v1/login", api.QueryHandler)
 }
 
 func StartUp() {
 	sc := config.ServerConfig
-	go func() {
-		// http service
-		mux := startupService()
-		log.Fatal(http.ListenAndServe(sc.ServerPort, mux))
-	}()
 
+	r := gin.New()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowCredentials: true,
+		AllowHeaders:     []string{"*"},
+		ExposeHeaders:    []string{"x-checksum"},
+	}))
+	Register(r)
+	srv := &http.Server{
+		Addr:    sc.ServerPort,
+		Handler: r,
+	}
+	go func() {
+		err := srv.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			return
+		}
+	}()
 	sg := make(chan os.Signal)
 	signal.Notify(sg, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL)
 	// stop server

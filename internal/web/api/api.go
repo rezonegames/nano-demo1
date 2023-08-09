@@ -1,23 +1,39 @@
 package api
 
 import (
-	"github.com/gorilla/mux"
-	"github.com/lonng/nex"
-	"net/http"
+	"fmt"
+	"github.com/gin-gonic/gin"
+	protov2 "google.golang.org/protobuf/proto"
+	"io/ioutil"
 	"tetris/config"
 	"tetris/consts"
 	"tetris/models"
 	"tetris/pkg/log"
 	"tetris/pkg/z"
-	proto2 "tetris/proto/proto"
+	"tetris/pkg/zweb"
+	"tetris/proto/proto"
 )
 
-// queryHandler 登录，如果玩家没有注册，自动注册之，只实现一种deviceId登录， todo：host暂时写死
-func queryHandler(req *proto2.AccountLoginReq) (*proto2.AccountLoginResp, error) {
-	log.Info("%v", req)
+// QueryHandler 登录，如果玩家没有注册，自动注册之，只实现一种deviceId登录， todo：host暂时写死
+func QueryHandler(c *gin.Context) {
+	var req proto.AccountLoginReq
+	data, err := ioutil.ReadAll(c.Request.Body)
+	err = protov2.Unmarshal(data, &req)
+	if err != nil {
+		zweb.Response(c, &proto.AccountLoginResp{
+			Code: proto.ErrorCode_UnknownError,
+		})
+		return
+	}
+	log.Info("login %d %d", req.Partition, req.AccountId)
 	partition := req.Partition
 	accountId := req.AccountId
-
+	if accountId == "" {
+		zweb.Response(c, &proto.AccountLoginResp{
+			Code: proto.ErrorCode_UnknownError,
+		})
+		return
+	}
 	var userId int64
 	switch partition {
 	case consts.DEVICEID:
@@ -27,30 +43,33 @@ func queryHandler(req *proto2.AccountLoginReq) (*proto2.AccountLoginResp, error)
 				a = models.NewAccount(partition, accountId)
 				err = models.CreateAccount(a)
 				if err != nil {
-					return &proto2.AccountLoginResp{Code: proto2.ErrorCode_DBError}, nil
+					zweb.Response(c, &proto.AccountLoginResp{
+						Code: proto.ErrorCode_UnknownError,
+					})
+					return
 				}
 			} else {
-				return &proto2.AccountLoginResp{Code: proto2.ErrorCode_DBError}, nil
+				zweb.Response(c, &proto.AccountLoginResp{
+					Code: proto.ErrorCode_UnknownError,
+				})
+				return
 			}
 		}
 		userId = a.UserId
 
 	default:
 		log.Error("queryHandler no account %d %s", partition, accountId)
-		return &proto2.AccountLoginResp{Code: proto2.ErrorCode_UnknownError}, nil
+		zweb.Response(c, &proto.AccountLoginResp{
+			Code: proto.ErrorCode_UnknownError,
+		})
+		return
 	}
 
 	sc := config.ServerConfig
-	return &proto2.AccountLoginResp{
-		UserId:    userId,
-		Host:      "127.0.0.1",
-		Port:      sc.Addr,
-		AccountId: accountId,
-	}, nil
-}
 
-func MakeLoginService() http.Handler {
-	router := mux.NewRouter()
-	router.Handle("/v1/user/login/query", nex.Handler(queryHandler)).Methods("POST")
-	return router
+	resp := &proto.AccountLoginResp{
+		UserId: userId,
+		Addr:   fmt.Sprintf("http://127.0.0.1%s/nano", sc.Addr),
+	}
+	zweb.Response(c, resp)
 }

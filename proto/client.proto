@@ -7,7 +7,7 @@ message Ping {
 }
 
 message Pong {
-  int64 timeStamp = 1;
+  int64 ts = 1;
 }
 
 message Join {
