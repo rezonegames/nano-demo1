@@ -3,8 +3,6 @@ package api
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	protov2 "google.golang.org/protobuf/proto"
-	"io/ioutil"
 	"tetris/config"
 	"tetris/consts"
 	"tetris/models"
@@ -17,15 +15,14 @@ import (
 // QueryHandler 登录，如果玩家没有注册，自动注册之，只实现一种deviceId登录， todo：host暂时写死
 func QueryHandler(c *gin.Context) {
 	var req proto.AccountLoginReq
-	data, err := ioutil.ReadAll(c.Request.Body)
-	err = protov2.Unmarshal(data, &req)
+	err := zweb.BindProto(c, &req)
 	if err != nil {
 		zweb.Response(c, &proto.AccountLoginResp{
 			Code: proto.ErrorCode_UnknownError,
 		})
 		return
 	}
-	log.Info("login %d %d", req.Partition, req.AccountId)
+
 	partition := req.Partition
 	accountId := req.AccountId
 	if accountId == "" {
@@ -66,10 +63,9 @@ func QueryHandler(c *gin.Context) {
 	}
 
 	sc := config.ServerConfig
-
 	resp := &proto.AccountLoginResp{
 		UserId: userId,
-		Addr:   fmt.Sprintf("http://127.0.0.1%s/nano", sc.Addr),
+		Addr:   fmt.Sprintf("127.0.0.1%s/nano", sc.Addr),
 	}
 	zweb.Response(c, resp)
 }

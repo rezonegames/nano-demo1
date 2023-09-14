@@ -1,8 +1,10 @@
 package web
 
 import (
+	"bytes"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,7 +12,33 @@ import (
 	"tetris/config"
 	"tetris/internal/web/api"
 	"tetris/pkg/log"
+	"time"
 )
+
+type responseBodyWriter struct {
+	gin.ResponseWriter
+	body *bytes.Buffer
+}
+
+func (r responseBodyWriter) Write(b []byte) (int, error) {
+	r.body.Write(b)
+	return r.ResponseWriter.Write(b)
+}
+
+func Logger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		t := time.Now()
+		bodyBytes, _ := io.ReadAll(c.Request.Body)
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		url := c.Request.URL.Path
+		log.Info("request url %s body %+v", url, string(bodyBytes))
+		w := &responseBodyWriter{body: &bytes.Buffer{}, ResponseWriter: c.Writer}
+		c.Writer = w
+		c.Next()
+		latency := time.Since(t)
+		log.Info("response for url %s latency %+v body %s", url, latency, w.body.String())
+	}
+}
 
 func Register(r *gin.Engine) {
 	/**
@@ -29,6 +57,7 @@ func StartUp() {
 		AllowHeaders:     []string{"*"},
 		ExposeHeaders:    []string{"x-checksum"},
 	}))
+	r.Use(Logger())
 	Register(r)
 	srv := &http.Server{
 		Addr:    sc.ServerPort,

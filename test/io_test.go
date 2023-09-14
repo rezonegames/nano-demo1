@@ -47,8 +47,8 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 		chReady <- struct{}{}
 	})
 
-	path := loginResp.Host + loginResp.Port
-	println(path, loginResp.UserId, loginResp.AccountId)
+	path := loginResp.Addr
+	println(path, loginResp.UserId)
 	if err := c.Start(path); err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	uid := loginResp.UserId
 	state := consts.IDLE
 	if uid == 0 {
-		c.Request("g.register", &proto2.RegisterGameReq{Name: deviceId, AccountId: loginResp.AccountId}, func(data interface{}) {
+		c.Request("g.register", &proto2.RegisterGameReq{Name: deviceId, AccountId: aa.AccountId}, func(data interface{}) {
 			chLogin <- struct{}{}
 
 			v := proto2.LoginToGameResp{}

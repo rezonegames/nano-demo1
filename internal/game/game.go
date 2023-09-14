@@ -52,7 +52,7 @@ func StartUp() {
 		nano.WithIsWebsocket(true),
 		// 心跳
 		//nano.WithHeartbeatInterval(5 * time.Second),
-		//nano.WithDebugMode(),
+		nano.WithDebugMode(),
 		nano.WithLogger(log.GetLogger()),
 		nano.WithComponents(services),
 		nano.WithSerializer(protobuf.NewSerializer()),
