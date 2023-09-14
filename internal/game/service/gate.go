@@ -71,7 +71,10 @@ func (g *GateService) Login(s *session.Session, req *proto.LoginToGame) error {
 		return err
 	}
 	g.online(s, uid)
-	return s.Response(&proto.LoginToGameResp{Player: util.ConvPlayerToProtoPlayer(pp)})
+	return s.Response(&proto.LoginToGameResp{
+		Player:   util.ConvPlayerToProtoPlayer(pp),
+		RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms),
+	})
 }
 
 func (g *GateService) Rooms(s *session.Session, _ interface{}) error {

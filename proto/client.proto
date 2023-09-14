@@ -27,6 +27,7 @@ message Profile {
 message LoginToGameResp {
   ErrorCode code = 3;
   Profile player = 1;
+  repeated Room roomList = 2;
 }
 
 message RegisterGameReq {
