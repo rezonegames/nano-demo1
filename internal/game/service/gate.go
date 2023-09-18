@@ -38,7 +38,7 @@ func (g *GateService) offline(s *session.Session) error {
 
 func (g *GateService) online(s *session.Session, uid int64) (*models.Profile, error) {
 	if ps, err := g.group.Member(uid); err == nil {
-		log.Info("close 老的连接", ps.ID())
+		log.Info("close 老的连接 %d", ps.ID())
 		ps.Close()
 	}
 	log.Info("玩家: %d上线", uid)
