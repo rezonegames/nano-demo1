@@ -42,12 +42,12 @@ type WaiterEntity interface {
 }
 
 // NewWaiter waiter的设计是等待的模式，比如王者荣耀，斗地主满人就开等等
-func NewWaiter(sList []*session.Session, room RoomEntity) WaiterEntity {
+func NewWaiter(sList []*session.Session, room RoomEntity, table TableEntity) WaiterEntity {
 	var w WaiterEntity
 	conf := room.GetConfig()
 	switch conf.RoomType {
 	case consts.QUICK:
-		w = NewNormalWaiter(sList, room)
+		w = NewNormalWaiter(sList, room, table)
 	default:
 		panic(fmt.Sprintf("NewWaiter unknown room type %s", conf.RoomType))
 	}

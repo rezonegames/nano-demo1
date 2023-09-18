@@ -65,7 +65,7 @@ func QueryHandler(c *gin.Context) {
 	sc := config.ServerConfig
 	resp := &proto.AccountLoginResp{
 		UserId: userId,
-		Addr:   fmt.Sprintf("192.168.3.23%s/nano", sc.Addr),
+		Addr:   fmt.Sprintf("127.0.0.1%s", sc.Addr),
 	}
 	zweb.Response(c, resp)
 }

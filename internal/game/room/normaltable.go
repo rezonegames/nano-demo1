@@ -26,6 +26,7 @@ type Table struct {
 	lock          sync.RWMutex
 	waiter        WaiterEntity
 	room          RoomEntity
+	begin         time.Time
 }
 
 func (t *Table) Ready(s *session.Session) error {
@@ -39,18 +40,14 @@ func NewNormalTable(room RoomEntity, sList []*session.Session) *Table {
 		group:         nano.NewGroup(tableId),
 		tableId:       tableId,
 		clients:       make(map[int64]*Client, 0),
-		state:         consts.WAIT,
+		state:         consts.WAITREADY,
 		conf:          conf,
 		loseCount:     0,
 		teamGroupSize: conf.Pvp / conf.Divide,
-		waiter:        NewWaiter(sList, room),
 		room:          room,
+		begin:         z.GetTime(),
 	}
-	log.Info("newTable start %s", tableId)
-	return t
-}
 
-func (t *Table) BackToTable(sList []*session.Session) {
 	var teamId int32
 	for i, v := range sList {
 		uid := v.UID()
@@ -61,6 +58,13 @@ func (t *Table) BackToTable(sList []*session.Session) {
 		t.Join(v, t.GetTableId())
 		log.Info("p2t %d %d", uid, teamId)
 	}
+
+	log.Info("newTable start %s", tableId)
+	t.waiter = NewWaiter(sList, room, t)
+	return t
+}
+
+func (t *Table) BackToTable(sList []*session.Session) {
 	t.BroadcastTableState(consts.COUNTDOWN)
 	time.Sleep(50 * time.Millisecond)
 	for i := 0; i < 3; i++ {
@@ -143,7 +147,20 @@ func (t *Table) Join(s *session.Session, tableId string) error {
 }
 
 func (t *Table) CanDestory() bool {
-	return t.state == consts.SETTLEMENT || t.group.Count() == 0
+	switch t.state {
+	case consts.SETTLEMENT:
+	case consts.CANCEL:
+		return true
+	case consts.WAITREADY:
+		// 1分钟了，还是这个状态，销毁之
+		if z.GetTime().Sub(t.begin) > time.Minute {
+			return true
+		}
+		return false
+	default:
+		return t.group.Count() == 0
+	}
+	return false
 }
 
 func (t *Table) GetInfo() *proto.TableInfo {

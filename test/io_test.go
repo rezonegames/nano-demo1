@@ -2,7 +2,6 @@ package test
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/lonng/nano/benchmark/io"
 	"github.com/lonng/nano/serialize/protobuf"
@@ -20,24 +19,33 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	defer wg.Done()
 	ss := protobuf.NewSerializer()
 
-	url := "http://127.0.0.1:8000/v1/user/login/query"
+	url := "http://127.0.0.1:8000/v1/login"
 	aa := &proto2.AccountLoginReq{
-		Partition: 0,
+		Partition: consts.DEVICEID,
 		AccountId: deviceId,
 	}
-	input, _ := json.Marshal(aa)
+	input, _ := ss.Marshal(aa)
 	req, err := http.NewRequest("POST", url, bytes.NewReader(input))
 	if err != nil {
 		panic(err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/x-protobuf")
 	client := &http.Client{}
 	resp, err := client.Do(req)
-
-	var loginResp proto2.AccountLoginResp
-	err = json.NewDecoder(resp.Body).Decode(&loginResp)
 	if err != nil {
-		panic(err)
+		fmt.Sprintf("Error http client do %+v", err)
+		return
+	}
+
+	respData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Sprintf("Error reading response body: %v", err)
+		return
+	}
+	respMsg := &proto2.AccountLoginResp{}
+	if err := ss.Unmarshal(respData, respMsg); err != nil {
+		fmt.Sprintf("Error unmarshaling response: %v", err)
+		return
 	}
 
 	// 长链接
@@ -47,8 +55,8 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 		chReady <- struct{}{}
 	})
 
-	path := loginResp.Addr
-	println(path, loginResp.UserId)
+	path := respMsg.Addr
+	println(path, respMsg.UserId)
 	if err := c.Start(path); err != nil {
 		panic(err)
 	}
@@ -59,7 +67,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 
 	var teamId int32
 	var tableId string
-	uid := loginResp.UserId
+	uid := respMsg.UserId
 	state := consts.IDLE
 	if uid == 0 {
 		c.Request("g.register", &proto2.RegisterGameReq{Name: deviceId, AccountId: aa.AccountId}, func(data interface{}) {
@@ -89,19 +97,21 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	})
 
 	// 状态变化
-	c.On("onStateChange", func(data interface{}) {
+	c.On("onState", func(data interface{}) {
 		v := proto2.GameStateResp{}
 		ss.Unmarshal(data.([]byte), &v)
 		state = v.State
 		tableInfo := v.TableInfo
 
-		for k, v := range tableInfo.Players {
-			if k == uid {
-				teamId = v.TeamId
+		if v.TableInfo != nil {
+			for k, v := range tableInfo.Players {
+				if k == uid {
+					teamId = v.TeamId
+				}
 			}
+			tableId = tableInfo.TableId
 		}
-		tableId = tableInfo.TableId
-		fmt.Println(deviceId, "onStateChange", v.State)
+		fmt.Println(deviceId, "onState", v.State)
 	})
 
 	c.Request("r.quickstart", &proto2.Join{
@@ -130,7 +140,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	ra := z.RandInt(6, 10)
 	ticker := time.NewTicker(time.Duration(ra) * time.Second)
 	defer ticker.Stop()
-	ticker1 := time.NewTicker(time.Second * 5)
+	ticker1 := time.NewTicker(time.Second * 1)
 	defer ticker1.Stop()
 
 	for /*i := 0; i < 1; i++*/ {
@@ -147,8 +157,11 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 				//fmt.Println("pong", v.TimeStamp)
 			})
 		case <-ticker.C:
-			if state == consts.GAMING {
+			switch state {
+			case consts.WAITREADY:
+				c.Notify("r.ready", &proto2.Ready{RoomId: rid})
 
+			case consts.GAMING:
 				m := make([]*proto2.Array, 0)
 				m = append(m, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 0}, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 1})
 
@@ -202,15 +215,15 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 //	fmt.Println(z.ToString(us))
 //}
 
-func TestIO(t *testing.T) {
+func TestGame(t *testing.T) {
 
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 2; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		go func(index int) {
-			client(fmt.Sprintf("test%d", index), "3", wg)
+			client(fmt.Sprintf("test%d", index), "1", wg)
 		}(i)
 	}
 
@@ -219,7 +232,7 @@ func TestIO(t *testing.T) {
 	t.Log("exit")
 }
 
-func TestNet(t *testing.T) {
+func TestWeb(t *testing.T) {
 	al := proto2.AccountLoginReq{
 		Partition: 0,
 		AccountId: "11111",

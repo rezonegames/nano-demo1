@@ -6,6 +6,7 @@ import (
 	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
 	"tetris/consts"
+	"tetris/pkg/log"
 	"tetris/proto/proto"
 	"time"
 )
@@ -22,13 +23,14 @@ type NormalWaiter struct {
 }
 
 // NewWaiter返回错误代表有人下线了
-func NewNormalWaiter(sList []*session.Session, room RoomEntity) *NormalWaiter {
+func NewNormalWaiter(sList []*session.Session, room RoomEntity, table TableEntity) *NormalWaiter {
 	uiid := uuid.New().String()
 	w := &NormalWaiter{
 		uiid:  uiid,
 		group: nano.NewGroup(uiid),
 		room:  room,
 		sList: make([]*session.Session, 0),
+		table: table,
 	}
 	for _, v := range sList {
 		w.group.Add(v)
@@ -42,15 +44,10 @@ func (w *NormalWaiter) GetId() string {
 }
 
 func (w *NormalWaiter) AfterInit() {
-	session.Lifetime.OnClosed(func(s *session.Session) {
-		w.CheckAndDismiss()
-	})
-
 	w.stime = scheduler.NewCountTimer(time.Second, 10, func() {
 		w.timeCounter++
 		// 都准备好了或者又离开的，解散waiter
 		w.CheckAndDismiss()
-
 	})
 }
 
@@ -58,6 +55,7 @@ func (w *NormalWaiter) AfterInit() {
 func (w *NormalWaiter) CheckAndDismiss() {
 	// 中途有离开或者10秒倒计时有玩家没有准备，返回到队列
 	if len(w.readyList) == w.group.Count() {
+		log.Debug("waiter done %s", w.table.GetTableId())
 		w.table.BackToTable(w.sList)
 	} else if w.timeCounter >= 10 && len(w.readyList) < w.group.Count() {
 		bList := make([]*session.Session, 0)
@@ -73,6 +71,7 @@ func (w *NormalWaiter) CheckAndDismiss() {
 			}
 		}
 		w.room.BackToQueue(bList)
+		log.Debug("waiter back to queue %d", len(bList))
 		w.group.Broadcast("onState", &proto.GameStateResp{
 			State: consts.WAIT,
 		})
@@ -84,6 +83,7 @@ func (w *NormalWaiter) CheckAndDismiss() {
 	w.stime.Stop()
 }
 
+// Ready 准备
 func (w *NormalWaiter) Ready(s *session.Session) error {
 	w.readyList = append(w.readyList, s.UID())
 	return w.group.Broadcast("onState", &proto.GameStateResp{

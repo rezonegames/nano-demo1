@@ -97,7 +97,7 @@ func (r *QuickRoom) WaitReady(sList []*session.Session) {
 		return
 	}
 	for _, s := range sList {
-		s.Response(&proto.GameStateResp{
+		s.Push("onState", &proto.GameStateResp{
 			State:    consts.WAITREADY,
 			Profiles: profiles,
 		})
