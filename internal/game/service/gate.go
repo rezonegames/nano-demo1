@@ -36,22 +36,26 @@ func (g *GateService) offline(s *session.Session) error {
 	return g.group.Leave(s)
 }
 
-func (g *GateService) online(s *session.Session, uid int64) error {
+func (g *GateService) online(s *session.Session, uid int64) (*models.Profile, error) {
 	if ps, err := g.group.Member(uid); err == nil {
 		log.Info("close 老的连接", ps.ID())
 		ps.Close()
 	}
 	log.Info("玩家: %d上线", uid)
-	g.group.Add(s)
-	return s.Bind(uid)
+	p, err := models.GetPlayer(uid)
+	if err != nil {
+		return nil, err
+	}
+	util.BindUser(s, p)
+	return p, g.group.Add(s)
 }
 
 func (g *GateService) Register(s *session.Session, req *proto.RegisterGameReq) error {
 	if req.AccountId == "" {
 		return s.Response(proto.LoginToGameResp{Code: proto.ErrorCode_AccountIdError})
 	}
-	pp := models.NewPlayer(req.Name, 100)
-	uid, err := models.CreatePlayer(pp)
+	p := models.NewPlayer(req.Name, 100)
+	uid, err := models.CreatePlayer(p)
 	if err != nil {
 		return err
 	}
@@ -59,20 +63,21 @@ func (g *GateService) Register(s *session.Session, req *proto.RegisterGameReq) e
 	if err != nil {
 		return err
 	}
-	g.online(s, uid)
-
-	return s.Response(&proto.LoginToGameResp{Player: util.ConvPlayerToProtoPlayer(pp)})
+	_, err = g.online(s, uid)
+	if err != nil {
+		return err
+	}
+	return s.Response(&proto.LoginToGameResp{Player: util.ConvProfileToProtoProfile(p)})
 }
 
 func (g *GateService) Login(s *session.Session, req *proto.LoginToGame) error {
 	uid := req.UserId
-	pp, err := models.GetPlayer(uid)
+	p, err := g.online(s, uid)
 	if err != nil {
 		return err
 	}
-	g.online(s, uid)
 	return s.Response(&proto.LoginToGameResp{
-		Player:   util.ConvPlayerToProtoPlayer(pp),
+		Player:   util.ConvProfileToProtoProfile(p),
 		RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms),
 	})
 }

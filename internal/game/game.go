@@ -40,7 +40,7 @@ func StartUp() {
 			}),
 		}
 		for _, v := range sc.Rooms {
-			r, _ := room.NewRoom(v)
+			r := room.NewRoom(v)
 			service.AddRoomEntity(v.RoomId, r)
 		}
 		services.Register(service, opts...)

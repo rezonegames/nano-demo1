@@ -12,6 +12,7 @@ const (
 const (
 	IDLE int32 = iota
 	WAIT
+	WAITREADY
 	COUNTDOWN
 	GAMING
 	SETTLEMENT

@@ -15,10 +15,11 @@ type Counter struct {
 }
 
 type Profile struct {
-	Name      string `bson:"name" json:"name"`
-	Coin      int32  `bson:"coin" json:"coin"`
-	UserId    int64  `bson:"_id" json:"user_id"`
-	UpdatedAt int64  `bson:"updated_at" json:"updated_at"`
+	Name      string `bson:"name"`
+	Coin      int32  `bson:"coin"`
+	UserId    int64  `bson:"_id"`
+	Pic       string `bson:"pic"`
+	UpdatedAt int64  `bson:"updated_at"`
 }
 
 func GetPlayer(userId int64, fields ...string) (*Profile, error) {

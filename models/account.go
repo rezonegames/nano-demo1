@@ -8,10 +8,10 @@ import (
 )
 
 type Account struct {
-	Partition int32  `bson:"partition" json:"partition"`
-	AccountId string `bson:"_id" json:"account_id"`
-	UserId    int64  `bson:"user_id" json:"user_id"`
-	Password  string `bson:"password" json:"password"`
+	Partition int32  `bson:"partition"`
+	AccountId string `bson:"_id"`
+	UserId    int64  `bson:"user_id"`
+	Password  string `bson:"password"`
 }
 
 func GetAccount(accountId string) (*Account, error) {

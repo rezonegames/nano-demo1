@@ -1,6 +1,7 @@
 package room
 
 import (
+	"github.com/lonng/nano"
 	"github.com/lonng/nano/session"
 	"sync"
 	"tetris/config"
@@ -13,35 +14,39 @@ import (
 )
 
 type QuickRoom struct {
-	conf   *config.Room
+	group  *nano.Group
+	config *config.Room
 	tables map[string]TableEntity
 	lock   sync.RWMutex
 	queue  []*session.Session
 }
 
-func newQuickRoom(conf *config.Room) *QuickRoom {
+func NewQuickRoom(conf *config.Room) *QuickRoom {
 	r := &QuickRoom{
-		conf:   conf,
+		group:  nano.NewGroup(conf.RoomId),
+		config: conf,
 		tables: make(map[string]TableEntity, 0),
 	}
-	go r.run()
 	log.Info(conf.Dump())
 	return r
 }
 
-func (r *QuickRoom) run() {
+func (r *QuickRoom) AfterInit() {
+	// 处理玩家断线等情况
+	session.Lifetime.OnClosed(func(s *session.Session) {
+		r.Leave(s)
+	})
 
 	// 处理玩家加入队列
 	qs := func() {
 		r.lock.Lock()
 		defer r.lock.Unlock()
 	ctrl2:
-		pvp := r.conf.Pvp
+		pvp := r.config.Pvp
 		if len(r.queue) >= int(pvp) {
 			vv := r.queue[:pvp]
 			r.queue = r.queue[pvp:]
-			t, _ := NewTable(r.conf, vv)
-			r.setTable(t.getTableId(), t)
+			r.WaitReady(vv)
 			goto ctrl2
 		}
 	}
@@ -49,7 +54,7 @@ func (r *QuickRoom) run() {
 	// 处理桌子的清理
 	clear := func() {
 		for k, v := range r.tables {
-			if v.canDestory() {
+			if v.CanDestory() {
 				delete(r.tables, k)
 				log.Info("clear table %s", k)
 			}
@@ -57,18 +62,68 @@ func (r *QuickRoom) run() {
 	}
 
 	ticker := time.NewTicker(time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			qs()
-			clear()
-		default:
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				qs()
+				clear()
+			default:
 
+			}
 		}
-	}
+	}()
 }
 
-func (r *QuickRoom) table(tableId string) (TableEntity, error) {
+func (r *QuickRoom) GetConfig() *config.Room {
+	return r.config
+}
+
+// WaitReady 准备就绪后，进入确认界面，所有玩家都点击确认以后，才开始游戏
+func (r *QuickRoom) WaitReady(sList []*session.Session) {
+	wc := len(sList)
+	profiles := make(map[int64]*proto.Profile, 0)
+	for i, v := range sList {
+		p, err := util.GetProfile(v)
+		if err != nil {
+			sList = append(sList[:i], sList[i+1:]...)
+			r.Leave(v)
+			break
+		}
+		profiles[p.UserId] = util.ConvProfileToProtoProfile(p)
+	}
+	if len(profiles) < wc {
+		r.BackToQueue(sList)
+		return
+	}
+	for _, s := range sList {
+		s.Response(&proto.GameStateResp{
+			State:    consts.WAITREADY,
+			Profiles: profiles,
+		})
+	}
+	r.CreateTable(sList)
+}
+
+func (r *QuickRoom) BackToQueue(sList []*session.Session) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	r.queue = append(r.queue, sList...)
+}
+
+func (r *QuickRoom) Ready(s *session.Session) error {
+	tid, err := util.GetTableId(s)
+	if err != nil {
+		return err
+	}
+	t, err := r.Table(tid)
+	if err != nil {
+		return err
+	}
+	return t.Ready(s)
+}
+
+func (r *QuickRoom) Table(tableId string) (TableEntity, error) {
 	t, ok := r.tables[tableId]
 	if !ok {
 		return nil, z.NilError{Msg: tableId}
@@ -79,6 +134,11 @@ func (r *QuickRoom) table(tableId string) (TableEntity, error) {
 func (r *QuickRoom) Leave(s *session.Session) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
+
+	// 从group离开
+	r.group.Leave(s)
+
+	// 如果在队列从队列离开
 	for i, v := range r.queue {
 		if v.ID() == s.ID() {
 			r.queue = append(r.queue[:i], r.queue[:i+1]...)
@@ -86,9 +146,11 @@ func (r *QuickRoom) Leave(s *session.Session) error {
 			break
 		}
 	}
-	if tid := util.GetSessionTableId(s); tid != "" {
-		if t, err := r.table(tid); err == nil {
-			t.leave(s)
+
+	//	如果在桌子，就从桌子离开
+	if tid, err := util.GetTableId(s); err != nil {
+		if t, err := r.Table(tid); err == nil {
+			t.Leave(s)
 		}
 	}
 	return nil
@@ -98,6 +160,7 @@ func (r *QuickRoom) Join(s *session.Session) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	r.queue = append(r.queue, s)
+	r.group.Add(s)
 	log.Info("addToQueue %d", s.UID())
 	return s.Response(&proto.GameStateResp{
 		State: consts.WAIT,
@@ -105,22 +168,27 @@ func (r *QuickRoom) Join(s *session.Session) error {
 }
 
 func (r *QuickRoom) UpdateState(s *session.Session, msg *proto.UpdateState) error {
-	t, err := r.table(msg.TableId)
+	t, err := r.Table(msg.TableId)
 	if err != nil {
 		return err
 	}
-	return t.updateState(s, msg)
+	return t.UpdateState(s, msg)
 }
 
 func (r *QuickRoom) ResumeTable(s *session.Session) error {
-	tid := util.GetSessionTableId(s)
-	t, err := r.table(tid)
+	tid, err := util.GetTableId(s)
 	if err != nil {
 		return err
 	}
-	return s.Response(t.getInfo())
+	t, err := r.Table(tid)
+	if err != nil {
+		return err
+	}
+	return s.Response(t.GetInfo())
 }
 
-func (r *QuickRoom) setTable(tableId string, t TableEntity) {
-	r.tables[tableId] = t
+// CreateTable waiter或者其它的方式创建的房间
+func (r *QuickRoom) CreateTable(sList []*session.Session) {
+	t := NewTable(r, sList)
+	r.tables[t.GetTableId()] = t
 }

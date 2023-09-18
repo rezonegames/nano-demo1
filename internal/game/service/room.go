@@ -49,6 +49,14 @@ func (r *RoomService) QuickStart(s *session.Session, msg *proto.Join) error {
 	return entity.Join(s)
 }
 
+func (r *RoomService) Ready(s *session.Session, msg *proto.Ready) error {
+	entity, err := r.entity(msg.RoomId)
+	if err != nil {
+		return err
+	}
+	return entity.Ready(s)
+}
+
 func (r *RoomService) Cancel(s *session.Session, msg *proto.Join) error {
 	entity, err := r.entity(msg.RoomId)
 	if err != nil {

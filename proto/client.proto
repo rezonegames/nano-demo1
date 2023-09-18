@@ -3,15 +3,13 @@ import "error.proto";
 package proto;
 option go_package = "/proto";
 
+// gate服务
+
 message Ping {
 }
 
 message Pong {
   int64 ts = 1;
-}
-
-message Join {
-  string roomId = 1;
 }
 
 message LoginToGame {
@@ -47,15 +45,28 @@ message GetRoomListResp {
   repeated Room roomList = 1;
 }
 
+// game服务
+
+message Join {
+  string roomId = 1;
+}
+
+
+message Ready {
+  string roomId = 1;
+}
+
 message CountDownResp {
   ErrorCode code = 3;
   int32 counter = 1;
 }
 
 message GameStateResp {
-  ErrorCode code = 3;
-  int32 state = 1;
-  TableInfo tableInfo = 4;
+  ErrorCode code = 1;
+  int32 state = 2;
+  TableInfo tableInfo = 3;
+  repeated int64 readyList = 4;
+  map<int64, Profile> profiles =5;
 }
 
 // TwoArray 二维数组[1:[0,0],2:[0,0]]

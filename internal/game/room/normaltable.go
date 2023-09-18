@@ -24,9 +24,16 @@ type Table struct {
 	teamGroupSize int32
 	state         int32 // 从countdown =》settlement 结束
 	lock          sync.RWMutex
+	waiter        WaiterEntity
+	room          RoomEntity
 }
 
-func newNormalTable(conf *config.Room, ss []*session.Session) *Table {
+func (t *Table) Ready(s *session.Session) error {
+	return t.waiter.Ready(s)
+}
+
+func NewNormalTable(room RoomEntity, sList []*session.Session) *Table {
+	conf := room.GetConfig()
 	tableId := fmt.Sprintf("%s:%d", conf.RoomId, z.NowUnixMilli())
 	t := &Table{
 		group:         nano.NewGroup(tableId),
@@ -36,24 +43,25 @@ func newNormalTable(conf *config.Room, ss []*session.Session) *Table {
 		conf:          conf,
 		loseCount:     0,
 		teamGroupSize: conf.Pvp / conf.Divide,
+		waiter:        NewWaiter(sList, room),
+		room:          room,
 	}
+	log.Info("newTable start %s", tableId)
+	return t
+}
+
+func (t *Table) BackToTable(sList []*session.Session) {
 	var teamId int32
-	for i, v := range ss {
+	for i, v := range sList {
 		uid := v.UID()
 		if i > 0 && int32(i)%t.conf.Divide == 0 {
 			teamId++
 		}
 		t.clients[uid] = newClient(v, teamId)
-		t.join(v, tableId)
+		t.Join(v, t.GetTableId())
 		log.Info("p2t %d %d", uid, teamId)
 	}
-	log.Info("newTable start %s", tableId)
-	go t.run()
-	return t
-}
-
-func (t *Table) run() {
-	t.broadcastTableState(consts.COUNTDOWN)
+	t.BroadcastTableState(consts.COUNTDOWN)
 	time.Sleep(50 * time.Millisecond)
 	for i := 0; i < 3; i++ {
 		t.group.Broadcast("onCountDown", &proto.CountDownResp{
@@ -61,18 +69,22 @@ func (t *Table) run() {
 		})
 		time.Sleep(time.Second)
 	}
-	t.broadcastTableState(consts.GAMING)
+	t.BroadcastTableState(consts.GAMING)
 }
 
-func (t *Table) broadcastTableState(s int32) {
+func (t *Table) AfterInit() {
+
+}
+
+func (t *Table) BroadcastTableState(s int32) {
 	t.state = s
-	t.group.Broadcast("onStateChange", &proto.GameStateResp{
+	t.group.Broadcast("onState", &proto.GameStateResp{
 		State:     t.state,
-		TableInfo: t.getInfo(),
+		TableInfo: t.GetInfo(),
 	})
 }
 
-func (t *Table) clientEnd(teamId int32) {
+func (t *Table) ClientEnd(teamId int32) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -92,49 +104,49 @@ func (t *Table) clientEnd(teamId int32) {
 	}
 
 	if t.loseCount >= t.teamGroupSize-1 {
-		t.broadcastTableState(consts.SETTLEMENT)
+		t.BroadcastTableState(consts.SETTLEMENT)
 		log.Info("本轮结束 %s", t.tableId)
 	}
 }
 
-func (t *Table) getClient(uid int64) *Client {
+func (t *Table) GetClient(uid int64) *Client {
 	return t.clients[uid]
 }
 
-func (t *Table) updateState(s *session.Session, msg *proto.UpdateState) error {
+func (t *Table) UpdateState(s *session.Session, msg *proto.UpdateState) error {
 	// Sync message to all members in this room
 	uid := s.UID()
-	c := t.getClient(uid)
+	c := t.GetClient(uid)
 	c.save(msg)
 	teamId := c.getTeamId()
 	log.Info("updateState %d %d %v", uid, teamId, z.ToString(msg))
 	if c.isEnd() {
-		t.clientEnd(teamId)
+		t.ClientEnd(teamId)
 	}
 	return t.group.Broadcast("onStateUpdate", msg)
 }
 
-func (t *Table) clear() {
+func (t *Table) Clear() {
 	t.group.Close()
 	for _, v := range t.clients {
-		util.SetSessionTableId(v.Session, "")
+		util.SetTableId(v.Session, "")
 	}
 }
 
-func (t *Table) leave(s *session.Session) {
+func (t *Table) Leave(s *session.Session) {
 	t.group.Leave(s)
 }
 
-func (t *Table) join(s *session.Session, tableId string) error {
-	util.SetSessionTableId(s, tableId)
+func (t *Table) Join(s *session.Session, tableId string) error {
+	util.SetTableId(s, tableId)
 	return t.group.Add(s)
 }
 
-func (t *Table) canDestory() bool {
+func (t *Table) CanDestory() bool {
 	return t.state == consts.SETTLEMENT || t.group.Count() == 0
 }
 
-func (t *Table) getInfo() *proto.TableInfo {
+func (t *Table) GetInfo() *proto.TableInfo {
 	players := make(map[int64]*proto.TableInfo_Player, 0)
 	for k, v := range t.clients {
 		players[k] = v.getPlayer()
@@ -146,6 +158,6 @@ func (t *Table) getInfo() *proto.TableInfo {
 	}
 }
 
-func (t *Table) getTableId() string {
+func (t *Table) GetTableId() string {
 	return t.tableId
 }

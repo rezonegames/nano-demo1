@@ -1,0 +1,20 @@
+syntax = "proto3";
+package proto;
+option go_package = "/proto";
+
+// 该结构与consts结构一样，客户端服务器共用，只要定义就不能改变
+enum AccountType {
+  DEVICEID = 0;
+  WX = 1;
+  FB = 2;
+  GIT = 3;
+}
+
+enum GameState {
+  IDLE = 0;
+  WAIT = 1;
+  WAITREADY = 2;
+  COUNTDOWN = 3;
+  GAMING = 4;
+  SETTLEMENT = 5;
+}
