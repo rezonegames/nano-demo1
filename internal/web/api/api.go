@@ -34,6 +34,10 @@ func QueryHandler(c *gin.Context) {
 	var userId int64
 	switch partition {
 	case consts.DEVICEID:
+		fallthrough
+	case consts.FB:
+		fallthrough
+	case consts.WX:
 		a, err := models.GetAccount(accountId)
 		if err != nil {
 			if _, ok := err.(z.NilError); ok {
@@ -53,7 +57,6 @@ func QueryHandler(c *gin.Context) {
 			}
 		}
 		userId = a.UserId
-
 	default:
 		log.Error("queryHandler no account %d %s", partition, accountId)
 		zweb.Response(c, &proto.AccountLoginResp{
@@ -62,10 +65,18 @@ func QueryHandler(c *gin.Context) {
 		return
 	}
 
+	var name string
+	if userId != 0 {
+		if p, err := models.GetPlayer(userId, "name"); err == nil {
+			name = p.Name
+		}
+	}
+
 	sc := config.ServerConfig
 	resp := &proto.AccountLoginResp{
 		UserId: userId,
 		Addr:   fmt.Sprintf("127.0.0.1%s", sc.Addr),
+		Name:   name,
 	}
 	zweb.Response(c, resp)
 }

@@ -46,11 +46,13 @@ message GetRoomListResp {
 }
 
 // game服务
-
 message Join {
   string roomId = 1;
 }
 
+message Cancel {
+  string roomId = 1;
+}
 
 message Ready {
   string roomId = 1;

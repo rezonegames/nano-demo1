@@ -57,7 +57,7 @@ func (r *RoomService) Ready(s *session.Session, msg *proto.Ready) error {
 	return entity.Ready(s)
 }
 
-func (r *RoomService) Cancel(s *session.Session, msg *proto.Join) error {
+func (r *RoomService) Cancel(s *session.Session, msg *proto.Cancel) error {
 	entity, err := r.entity(msg.RoomId)
 	if err != nil {
 		return err

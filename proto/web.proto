@@ -12,4 +12,5 @@ message AccountLoginResp {
   ErrorCode code = 5;
   int64 userId = 1;
   string addr = 2;
+  string name = 3;
 }

@@ -67,7 +67,10 @@ func (g *GateService) Register(s *session.Session, req *proto.RegisterGameReq) e
 	if err != nil {
 		return err
 	}
-	return s.Response(&proto.LoginToGameResp{Player: util.ConvProfileToProtoProfile(p)})
+	return s.Response(&proto.LoginToGameResp{
+		Player:   util.ConvProfileToProtoProfile(p),
+		RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms),
+	})
 }
 
 func (g *GateService) Login(s *session.Session, req *proto.LoginToGame) error {

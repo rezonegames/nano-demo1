@@ -43,6 +43,9 @@ func (r *QuickRoom) AfterInit() {
 		defer r.lock.Unlock()
 	ctrl2:
 		pvp := r.config.Pvp
+		if len(r.queue) > 0 {
+			log.Debug("queue member %s %d", r.config.RoomId, len(r.queue))
+		}
 		if len(r.queue) >= int(pvp) {
 			vv := r.queue[:pvp]
 			r.queue = r.queue[pvp:]
@@ -134,15 +137,14 @@ func (r *QuickRoom) Table(tableId string) (TableEntity, error) {
 func (r *QuickRoom) Leave(s *session.Session) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-
 	// 从group离开
 	r.group.Leave(s)
 
 	// 如果在队列从队列离开
 	for i, v := range r.queue {
 		if v.ID() == s.ID() {
-			r.queue = append(r.queue[:i], r.queue[:i+1]...)
-			log.Info("removeFromQueue1 %d", s.UID())
+			r.queue = append(r.queue[:i], r.queue[i+1:]...)
+			log.Info("%s player leave queue %d", r.config.RoomId, s.UID())
 			break
 		}
 	}
@@ -161,7 +163,7 @@ func (r *QuickRoom) Join(s *session.Session) error {
 	defer r.lock.Unlock()
 	r.queue = append(r.queue, s)
 	r.group.Add(s)
-	log.Info("addToQueue %d", s.UID())
+	log.Info("%s addToQueue %d", r.config.RoomId, s.UID())
 	return s.Response(&proto.GameStateResp{
 		State: consts.WAIT,
 	})
