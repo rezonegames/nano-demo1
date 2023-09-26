@@ -24,16 +24,20 @@ type Table struct {
 	teamGroupSize int32
 	state         int32 // 从countdown =》settlement 结束
 	lock          sync.RWMutex
-	waiter        WaiterEntity
-	room          RoomEntity
+	waiter        util.WaiterEntity
+	room          util.RoomEntity
 	begin         time.Time
+}
+
+func (t *Table) Entity() (util.WaiterEntity, error) {
+	return t.waiter, nil
 }
 
 func (t *Table) Ready(s *session.Session) error {
 	return t.waiter.Ready(s)
 }
 
-func NewNormalTable(room RoomEntity, sList []*session.Session) *Table {
+func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 	conf := room.GetConfig()
 	tableId := fmt.Sprintf("%s:%d", conf.RoomId, z.NowUnixMilli())
 	t := &Table{
@@ -133,7 +137,7 @@ func (t *Table) UpdateState(s *session.Session, msg *proto.UpdateState) error {
 func (t *Table) Clear() {
 	t.group.Close()
 	for _, v := range t.clients {
-		util.SetTableId(v.Session, "")
+		util.RemoveTable(v.Session)
 	}
 }
 

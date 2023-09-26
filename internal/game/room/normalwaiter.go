@@ -6,6 +6,7 @@ import (
 	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
 	"tetris/consts"
+	"tetris/internal/game/util"
 	"tetris/pkg/log"
 	"tetris/proto/proto"
 	"time"
@@ -15,15 +16,15 @@ type NormalWaiter struct {
 	uiid        string
 	group       *nano.Group
 	readyList   []int64
-	room        RoomEntity
-	table       TableEntity
+	room        util.RoomEntity
+	table       util.TableEntity
 	timeCounter int32
 	stime       *scheduler.Timer
 	sList       []*session.Session
 }
 
 // NewWaiter返回错误代表有人下线了
-func NewNormalWaiter(sList []*session.Session, room RoomEntity, table TableEntity) *NormalWaiter {
+func NewNormalWaiter(sList []*session.Session, room util.RoomEntity, table util.TableEntity) *NormalWaiter {
 	uiid := uuid.New().String()
 	w := &NormalWaiter{
 		uiid:  uiid,
@@ -39,12 +40,8 @@ func NewNormalWaiter(sList []*session.Session, room RoomEntity, table TableEntit
 	return w
 }
 
-func (w *NormalWaiter) GetId() string {
-	return w.uiid
-}
-
 func (w *NormalWaiter) AfterInit() {
-	w.stime = scheduler.NewCountTimer(time.Second, 10, func() {
+	w.stime = scheduler.NewCountTimer(time.Second, 20, func() {
 		w.timeCounter++
 		// 都准备好了或者又离开的，解散waiter
 		w.CheckAndDismiss()

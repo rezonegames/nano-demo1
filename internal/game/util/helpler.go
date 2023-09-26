@@ -50,31 +50,31 @@ func SetTableId(s *session.Session, tableId string) {
 	s.Set("tableId", tableId)
 }
 
-func GetTableId(s *session.Session) (string, error) {
+func GetTable(s *session.Session, room RoomEntity) (TableEntity, error) {
 	tid := s.String("tableId")
 	if tid == "" {
-		return "", z.NilError{}
+		return nil, z.NilError{}
 	}
-	return tid, nil
+	return room.Entity(tid)
 }
 
-func RemoveTableId(s *session.Session) {
+func RemoveTable(s *session.Session) {
 	s.Remove("tableId")
 }
 
-// SetWaiterId 设置waiterId
-func SetWaiterId(s *session.Session, waiterId string) {
-	s.Set("waiterId", waiterId)
+// SetRoomId 设置房间
+func SetRoomId(s *session.Session, roomId string) {
+	s.Set("roomId", roomId)
 }
 
-func GetWaiterId(s *session.Session) (string, error) {
-	wid := s.String("waiterId")
-	if wid == "" {
+func GetRoomId(s *session.Session) (string, error) {
+	rid := s.String("roomId")
+	if rid == "" {
 		return "", z.NilError{}
 	}
-	return wid, nil
+	return rid, nil
 }
 
-func ReomveWaiter(s *session.Session) {
-	s.Remove("waiterId")
+func RemoveRoom(s *session.Session) {
+	s.Remove("roomId")
 }

@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/lonng/nano/component"
 	"github.com/lonng/nano/session"
-	"tetris/internal/game/room"
+	"tetris/internal/game/util"
 	"tetris/pkg/z"
 	"tetris/proto/proto"
 )
@@ -11,12 +11,12 @@ import (
 type RoomService struct {
 	*component.Base
 	serviceName string
-	rooms       map[string]room.RoomEntity
+	rooms       map[string]util.RoomEntity
 }
 
 func NewRoomService() *RoomService {
 	return &RoomService{
-		rooms: make(map[string]room.RoomEntity, 0),
+		rooms: make(map[string]util.RoomEntity, 0),
 	}
 }
 
@@ -29,11 +29,11 @@ func (r *RoomService) AfterInit() {
 	})
 }
 
-func (r *RoomService) AddRoomEntity(roomId string, entity room.RoomEntity) {
+func (r *RoomService) AddRoomEntity(roomId string, entity util.RoomEntity) {
 	r.rooms[roomId] = entity
 }
 
-func (r *RoomService) entity(roomId string) (room.RoomEntity, error) {
+func (r *RoomService) entity(roomId string) (util.RoomEntity, error) {
 	entity, ok := r.rooms[roomId]
 	if !ok {
 		return nil, z.NilError{Msg: roomId}
@@ -41,7 +41,7 @@ func (r *RoomService) entity(roomId string) (room.RoomEntity, error) {
 	return entity, nil
 }
 
-func (r *RoomService) QuickStart(s *session.Session, msg *proto.Join) error {
+func (r *RoomService) Join(s *session.Session, msg *proto.Join) error {
 	entity, err := r.entity(msg.RoomId)
 	if err != nil {
 		return err
@@ -50,7 +50,11 @@ func (r *RoomService) QuickStart(s *session.Session, msg *proto.Join) error {
 }
 
 func (r *RoomService) Ready(s *session.Session, msg *proto.Ready) error {
-	entity, err := r.entity(msg.RoomId)
+	rid, err := util.GetRoomId(s)
+	if err != nil {
+		return err
+	}
+	entity, err := r.entity(rid)
 	if err != nil {
 		return err
 	}
@@ -58,7 +62,11 @@ func (r *RoomService) Ready(s *session.Session, msg *proto.Ready) error {
 }
 
 func (r *RoomService) Cancel(s *session.Session, msg *proto.Cancel) error {
-	entity, err := r.entity(msg.RoomId)
+	rid, err := util.GetRoomId(s)
+	if err != nil {
+		return err
+	}
+	entity, err := r.entity(rid)
 	if err != nil {
 		return err
 	}
@@ -66,7 +74,11 @@ func (r *RoomService) Cancel(s *session.Session, msg *proto.Cancel) error {
 }
 
 func (r *RoomService) UpdateState(s *session.Session, msg *proto.UpdateState) error {
-	entity, err := r.entity(msg.RoomId)
+	rid, err := util.GetRoomId(s)
+	if err != nil {
+		return err
+	}
+	entity, err := r.entity(rid)
 	if err != nil {
 		return err
 	}

@@ -23,9 +23,11 @@ message Profile {
   int64 updatedAt = 4;
 }
 message LoginToGameResp {
-  ErrorCode code = 3;
-  Profile player = 1;
-  repeated Room roomList = 2;
+  ErrorCode code = 1;
+  Profile player = 2;
+  repeated Room roomList = 3;
+  string roomId = 4;
+  string tableId = 5;
 }
 
 message RegisterGameReq {
@@ -41,8 +43,8 @@ message Room {
 }
 
 message GetRoomListResp {
-  ErrorCode code = 3;
-  repeated Room roomList = 1;
+  ErrorCode code = 1;
+  repeated Room roomList = 2;
 }
 
 // game服务
@@ -50,13 +52,21 @@ message Join {
   string roomId = 1;
 }
 
+message JoinResp {
+  ErrorCode code = 1;
+}
+
 message Cancel {
-  string roomId = 1;
+}
+
+message CancelResp {
+  ErrorCode code = 1;
 }
 
 message Ready {
-  string roomId = 1;
 }
+
+message LeaveResp {}
 
 message CountDownResp {
   ErrorCode code = 3;
@@ -96,9 +106,6 @@ message State {
 
 // UpdateState 玩家上传的方块数据
 message UpdateState {
-  string roomId = 1;
-  string tableId = 2;
-  // fragment=player|arena|all
   string fragment = 3;
   // pos|matrix|score
   Player player = 4;

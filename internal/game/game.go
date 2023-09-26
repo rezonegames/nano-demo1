@@ -10,6 +10,7 @@ import (
 	"tetris/internal/game/room"
 	service2 "tetris/internal/game/service"
 	"tetris/pkg/log"
+	"time"
 )
 
 func StartUp() {
@@ -52,7 +53,7 @@ func StartUp() {
 		nano.WithWSPath("/nano"),
 		nano.WithIsWebsocket(true),
 		// 心跳
-		//nano.WithHeartbeatInterval(5 * time.Second),
+		nano.WithHeartbeatInterval(5 * time.Second),
 		nano.WithLogger(log.GetLogger()),
 		nano.WithComponents(services),
 		nano.WithSerializer(protobuf.NewSerializer()),
