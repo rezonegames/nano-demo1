@@ -20,7 +20,8 @@ message Profile {
   string name = 1;
   int32 coin = 2;
   int64 userId = 3;
-  int64 updatedAt = 4;
+  int32 teamId = 4;
+  int64 updatedAt = 10;
 }
 message LoginToGameResp {
   ErrorCode code = 1;
@@ -76,9 +77,11 @@ message CountDownResp {
 message GameStateResp {
   ErrorCode code = 1;
   int32 state = 2;
+  int32 subState = 10;
   TableInfo tableInfo = 3;
   repeated int64 readyList = 4;
   map<int64, Profile> profiles =5;
+  int32 countDown = 6;
 }
 
 // TwoArray 二维数组[1:[0,0],2:[0,0]]

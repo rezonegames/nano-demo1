@@ -18,3 +18,13 @@ enum GameState {
   GAMING = 4;
   SETTLEMENT = 5;
 }
+
+enum GameStateWait {
+  WAITREADY_PROFILE = 0;
+  WAITREADY_COUNTDOWN = 1;
+  WAITREADY_READYLIST = 2;
+}
+
+enum GameStateCountDown {
+    COUNTDOWN_BEGIN = 0;
+}

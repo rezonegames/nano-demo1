@@ -131,6 +131,98 @@ func (GameState) EnumDescriptor() ([]byte, []int) {
 	return file_consts_proto_rawDescGZIP(), []int{1}
 }
 
+type GameStateWait int32
+
+const (
+	GameStateWait_WAITREADY_PROFILE   GameStateWait = 0
+	GameStateWait_WAITREADY_COUNTDOWN GameStateWait = 1
+	GameStateWait_WAITREADY_READYLIST GameStateWait = 2
+)
+
+// Enum value maps for GameStateWait.
+var (
+	GameStateWait_name = map[int32]string{
+		0: "WAITREADY_PROFILE",
+		1: "WAITREADY_COUNTDOWN",
+		2: "WAITREADY_READYLIST",
+	}
+	GameStateWait_value = map[string]int32{
+		"WAITREADY_PROFILE":   0,
+		"WAITREADY_COUNTDOWN": 1,
+		"WAITREADY_READYLIST": 2,
+	}
+)
+
+func (x GameStateWait) Enum() *GameStateWait {
+	p := new(GameStateWait)
+	*p = x
+	return p
+}
+
+func (x GameStateWait) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GameStateWait) Descriptor() protoreflect.EnumDescriptor {
+	return file_consts_proto_enumTypes[2].Descriptor()
+}
+
+func (GameStateWait) Type() protoreflect.EnumType {
+	return &file_consts_proto_enumTypes[2]
+}
+
+func (x GameStateWait) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GameStateWait.Descriptor instead.
+func (GameStateWait) EnumDescriptor() ([]byte, []int) {
+	return file_consts_proto_rawDescGZIP(), []int{2}
+}
+
+type GameStateCountDown int32
+
+const (
+	GameStateCountDown_COUNTDOWN_BEGIN GameStateCountDown = 0
+)
+
+// Enum value maps for GameStateCountDown.
+var (
+	GameStateCountDown_name = map[int32]string{
+		0: "COUNTDOWN_BEGIN",
+	}
+	GameStateCountDown_value = map[string]int32{
+		"COUNTDOWN_BEGIN": 0,
+	}
+)
+
+func (x GameStateCountDown) Enum() *GameStateCountDown {
+	p := new(GameStateCountDown)
+	*p = x
+	return p
+}
+
+func (x GameStateCountDown) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GameStateCountDown) Descriptor() protoreflect.EnumDescriptor {
+	return file_consts_proto_enumTypes[3].Descriptor()
+}
+
+func (GameStateCountDown) Type() protoreflect.EnumType {
+	return &file_consts_proto_enumTypes[3]
+}
+
+func (x GameStateCountDown) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GameStateCountDown.Descriptor instead.
+func (GameStateCountDown) EnumDescriptor() ([]byte, []int) {
+	return file_consts_proto_rawDescGZIP(), []int{3}
+}
+
 var File_consts_proto protoreflect.FileDescriptor
 
 var file_consts_proto_rawDesc = []byte{
@@ -144,8 +236,16 @@ var file_consts_proto_rawDesc = []byte{
 	0x57, 0x41, 0x49, 0x54, 0x52, 0x45, 0x41, 0x44, 0x59, 0x10, 0x02, 0x12, 0x0d, 0x0a, 0x09, 0x43,
 	0x4f, 0x55, 0x4e, 0x54, 0x44, 0x4f, 0x57, 0x4e, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06, 0x47, 0x41,
 	0x4d, 0x49, 0x4e, 0x47, 0x10, 0x04, 0x12, 0x0e, 0x0a, 0x0a, 0x53, 0x45, 0x54, 0x54, 0x4c, 0x45,
-	0x4d, 0x45, 0x4e, 0x54, 0x10, 0x05, 0x42, 0x08, 0x5a, 0x06, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x4d, 0x45, 0x4e, 0x54, 0x10, 0x05, 0x2a, 0x58, 0x0a, 0x0d, 0x47, 0x61, 0x6d, 0x65, 0x53, 0x74,
+	0x61, 0x74, 0x65, 0x57, 0x61, 0x69, 0x74, 0x12, 0x15, 0x0a, 0x11, 0x57, 0x41, 0x49, 0x54, 0x52,
+	0x45, 0x41, 0x44, 0x59, 0x5f, 0x50, 0x52, 0x4f, 0x46, 0x49, 0x4c, 0x45, 0x10, 0x00, 0x12, 0x17,
+	0x0a, 0x13, 0x57, 0x41, 0x49, 0x54, 0x52, 0x45, 0x41, 0x44, 0x59, 0x5f, 0x43, 0x4f, 0x55, 0x4e,
+	0x54, 0x44, 0x4f, 0x57, 0x4e, 0x10, 0x01, 0x12, 0x17, 0x0a, 0x13, 0x57, 0x41, 0x49, 0x54, 0x52,
+	0x45, 0x41, 0x44, 0x59, 0x5f, 0x52, 0x45, 0x41, 0x44, 0x59, 0x4c, 0x49, 0x53, 0x54, 0x10, 0x02,
+	0x2a, 0x29, 0x0a, 0x12, 0x47, 0x61, 0x6d, 0x65, 0x53, 0x74, 0x61, 0x74, 0x65, 0x43, 0x6f, 0x75,
+	0x6e, 0x74, 0x44, 0x6f, 0x77, 0x6e, 0x12, 0x13, 0x0a, 0x0f, 0x43, 0x4f, 0x55, 0x4e, 0x54, 0x44,
+	0x4f, 0x57, 0x4e, 0x5f, 0x42, 0x45, 0x47, 0x49, 0x4e, 0x10, 0x00, 0x42, 0x08, 0x5a, 0x06, 0x2f,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -160,10 +260,12 @@ func file_consts_proto_rawDescGZIP() []byte {
 	return file_consts_proto_rawDescData
 }
 
-var file_consts_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_consts_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_consts_proto_goTypes = []interface{}{
-	(AccountType)(0), // 0: proto.AccountType
-	(GameState)(0),   // 1: proto.GameState
+	(AccountType)(0),        // 0: proto.AccountType
+	(GameState)(0),          // 1: proto.GameState
+	(GameStateWait)(0),      // 2: proto.GameStateWait
+	(GameStateCountDown)(0), // 3: proto.GameStateCountDown
 }
 var file_consts_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -183,7 +285,7 @@ func file_consts_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_consts_proto_rawDesc,
-			NumEnums:      2,
+			NumEnums:      4,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

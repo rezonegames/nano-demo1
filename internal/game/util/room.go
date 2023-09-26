@@ -30,7 +30,7 @@ type TableEntity interface {
 	Ready(s *session.Session) error
 	CanDestory() bool
 	GetInfo() *proto.TableInfo
-	BackToTable([]*session.Session)
+	BackToTable()
 	Entity() (WaiterEntity, error)
 }
 

@@ -51,9 +51,6 @@ func (r *QuickRoom) AfterInit() {
 		defer r.lock.Unlock()
 	ctrl2:
 		pvp := r.config.Pvp
-		if len(r.queue) > 0 && z.NowUnix()%5 == 0 {
-			log.Debug("queue member %s %d", r.config.RoomId, len(r.queue))
-		}
 		if len(r.queue) >= int(pvp) {
 			vv := r.queue[:pvp]
 			r.queue = r.queue[pvp:]
@@ -92,35 +89,14 @@ func (r *QuickRoom) GetConfig() *config.Room {
 
 // WaitReady 准备就绪后，进入确认界面，所有玩家都点击确认以后，才开始游戏
 func (r *QuickRoom) WaitReady(sList []*session.Session) {
-	wc := len(sList)
-	profiles := make(map[int64]*proto.Profile, 0)
-	for i, v := range sList {
-		p, err := util.GetProfile(v)
-		if err != nil {
-			sList = append(sList[:i], sList[i+1:]...)
-			r.Leave(v)
-			break
-		}
-		profiles[p.UserId] = util.ConvProfileToProtoProfile(p)
-	}
-	if len(profiles) < wc {
-		r.BackToQueue(sList)
-		return
-	}
-	for _, s := range sList {
-		s.Push("onState", &proto.GameStateResp{
-			State:    consts.WAITREADY,
-			Profiles: profiles,
-		})
-	}
 	r.CreateTable(sList)
 }
 
 func (r *QuickRoom) BackToQueue(sList []*session.Session) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	log.Info("BackToQueue %+v", sList)
 	r.queue = append(r.queue, sList...)
+	log.Debug("BackToQueue %+v %+v", sList, r.queue)
 }
 
 func (r *QuickRoom) Ready(s *session.Session) error {

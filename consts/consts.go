@@ -19,6 +19,20 @@ const (
 	SETTLEMENT
 )
 
+// 等待开始的子状态
+const (
+	WAITREADY_PROFILE int32 = iota
+	WAITREADY_COUNTDOWN
+	WAITREADY_READYLIST
+)
+
+// 进入游戏倒计时
+const (
+	COUNTDOWN_BEGIN int32 = iota
+)
+
+// 进入游戏
+
 // 房间类型
 const (
 	QUICK int32 = iota + 1

@@ -3,7 +3,7 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"github.com/lonng/nano/benchmark/io"
+	"github.com/lonng/nano/benchmark/wsio"
 	"github.com/lonng/nano/serialize/protobuf"
 	"io/ioutil"
 	"net/http"
@@ -49,7 +49,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	}
 
 	// 长链接
-	c := io.NewConnector()
+	c := wsio.NewConnector()
 	chReady := make(chan struct{})
 	c.OnConnected(func() {
 		chReady <- struct{}{}
@@ -57,7 +57,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 
 	path := respMsg.Addr
 	println(path, respMsg.UserId)
-	if err := c.Start(path); err != nil {
+	if err := c.Start(path, "/nano"); err != nil {
 		panic(err)
 	}
 	<-chReady
@@ -66,7 +66,6 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	chEnd := make(chan interface{}, 0)
 
 	var teamId int32
-	var tableId string
 	uid := respMsg.UserId
 	state := consts.IDLE
 	if uid == 0 {
@@ -87,7 +86,6 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 		})
 	}
 	<-chLogin
-	c.On("pong", func(data interface{}) {})
 
 	// 倒计时
 	c.On("onCountDown", func(data interface{}) {
@@ -109,17 +107,9 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 					teamId = v.TeamId
 				}
 			}
-			tableId = tableInfo.TableId
+			//tableId = tableInfo.TableId
 		}
 		fmt.Println(deviceId, "onState", v.State)
-	})
-
-	c.Request("r.quickstart", &proto2.Join{
-		RoomId: rid,
-	}, func(data interface{}) {
-		v := proto2.GameStateResp{}
-		ss.Unmarshal(data.([]byte), &v)
-		fmt.Println(deviceId, "quickstart", v.State)
 	})
 
 	c.On("onTeamLose", func(data interface{}) {
@@ -140,8 +130,6 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	ra := z.RandInt(6, 10)
 	ticker := time.NewTicker(time.Duration(ra) * time.Second)
 	defer ticker.Stop()
-	ticker1 := time.NewTicker(time.Second * 1)
-	defer ticker1.Stop()
 
 	for /*i := 0; i < 1; i++*/ {
 
@@ -149,25 +137,25 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 		case <-chEnd:
 			fmt.Println("游戏结束了", uid)
 			return
-
-		case <-ticker1.C:
-			c.Request("g.ping", &proto2.Ping{}, func(data interface{}) {
-				v := proto2.Pong{}
-				ss.Unmarshal(data.([]byte), &v)
-				//fmt.Println("pong", v.TimeStamp)
-			})
 		case <-ticker.C:
 			switch state {
+			case consts.IDLE:
+				c.Request("r.join", &proto2.Join{
+					RoomId: rid,
+				}, func(data interface{}) {
+					v := proto2.GameStateResp{}
+					ss.Unmarshal(data.([]byte), &v)
+					state = v.State
+					fmt.Println(deviceId, "join", state)
+				})
 			case consts.WAITREADY:
-				c.Notify("r.ready", &proto2.Ready{RoomId: rid})
+				c.Notify("r.ready", &proto2.Ready{})
 
 			case consts.GAMING:
 				m := make([]*proto2.Array, 0)
 				m = append(m, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 0}, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 1})
 
 				c.Request("r.updatestate", &proto2.UpdateState{
-					RoomId:   rid,
-					TableId:  tableId,
 					PlayerId: uid,
 
 					Fragment: "all",
@@ -187,6 +175,8 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 				}, func(data interface{}) {
 					fmt.Println(deviceId, "syncmessage")
 				})
+			case consts.SETTLEMENT:
+				state = consts.IDLE
 			}
 		default:
 
@@ -219,11 +209,11 @@ func TestGame(t *testing.T) {
 
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		go func(index int) {
-			client(fmt.Sprintf("test%d", index), "1", wg)
+			client(fmt.Sprintf("robot%d", index), "1", wg)
 		}(i)
 	}
 

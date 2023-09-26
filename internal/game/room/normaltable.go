@@ -52,6 +52,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		begin:         z.GetTime(),
 	}
 
+	profiles := make(map[int64]*proto.Profile, 0)
 	var teamId int32
 	for i, v := range sList {
 		uid := v.UID()
@@ -61,6 +62,17 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		t.clients[uid] = newClient(v, teamId)
 		t.Join(v, t.GetTableId())
 		log.Info("p2t %d %d", uid, teamId)
+		p, _ := util.GetProfile(v)
+		pp := util.ConvProfileToProtoProfile(p)
+		pp.TeamId = teamId
+		profiles[p.UserId] = pp
+	}
+	for _, s := range sList {
+		s.Push("onState", &proto.GameStateResp{
+			State:    consts.WAITREADY,
+			SubState: consts.WAITREADY_PROFILE,
+			Profiles: profiles,
+		})
 	}
 
 	log.Info("newTable start %s", tableId)
@@ -68,7 +80,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 	return t
 }
 
-func (t *Table) BackToTable(sList []*session.Session) {
+func (t *Table) BackToTable() {
 	t.BroadcastTableState(consts.COUNTDOWN)
 	time.Sleep(50 * time.Millisecond)
 	for i := 0; i < 3; i++ {

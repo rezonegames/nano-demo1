@@ -50,11 +50,12 @@ func (w *NormalWaiter) AfterInit() {
 
 // Dismiss 解散
 func (w *NormalWaiter) CheckAndDismiss() {
+	var countDown int32 = 30
 	// 中途有离开或者10秒倒计时有玩家没有准备，返回到队列
 	if len(w.readyList) == w.group.Count() {
 		log.Debug("waiter done %s", w.table.GetTableId())
-		w.table.BackToTable(w.sList)
-	} else if w.timeCounter >= 10 && len(w.readyList) < w.group.Count() {
+		w.table.BackToTable()
+	} else if w.timeCounter >= countDown && len(w.readyList) < w.group.Count() {
 		bList := make([]*session.Session, 0)
 		for _, v := range w.sList {
 			bc := false
@@ -73,6 +74,11 @@ func (w *NormalWaiter) CheckAndDismiss() {
 			State: consts.WAIT,
 		})
 	} else {
+		w.group.Broadcast("onState", &proto.GameStateResp{
+			State:     consts.WAITREADY,
+			SubState:  consts.WAITREADY_COUNTDOWN,
+			CountDown: countDown - w.timeCounter,
+		})
 		return
 	}
 	w.group.Close()
@@ -85,6 +91,7 @@ func (w *NormalWaiter) Ready(s *session.Session) error {
 	w.readyList = append(w.readyList, s.UID())
 	return w.group.Broadcast("onState", &proto.GameStateResp{
 		State:     consts.WAITREADY,
+		SubState:  consts.WAITREADY_READYLIST,
 		ReadyList: w.readyList,
 	})
 }
