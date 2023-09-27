@@ -1,5 +1,9 @@
 package consts
 
+const (
+	NONE = 0
+)
+
 // 第三方登录渠道
 const (
 	DEVICEID = iota
@@ -21,17 +25,26 @@ const (
 
 // 等待开始的子状态
 const (
-	WAITREADY_PROFILE int32 = iota
+	WAITREADY_PROFILE int32 = iota + 1
 	WAITREADY_COUNTDOWN
 	WAITREADY_READYLIST
 )
 
 // 进入游戏倒计时
 const (
-	COUNTDOWN_BEGIN int32 = iota
+	COUNTDOWN_BEGIN int32 = iota + 1
 )
 
 // 进入游戏
+const (
+	GAME_BEGIN int32 = iota + 1
+)
+
+// 结算
+const (
+	SETTLEMENT_BEGIN int32 = iota + 1
+	SETTLEMENT_END
+)
 
 // 房间类型
 const (

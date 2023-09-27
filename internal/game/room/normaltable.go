@@ -3,6 +3,7 @@ package room
 import (
 	"fmt"
 	"github.com/lonng/nano"
+	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
 	"sync"
 	"tetris/config"
@@ -27,6 +28,7 @@ type Table struct {
 	waiter        util.WaiterEntity
 	room          util.RoomEntity
 	begin         time.Time
+	countDown     int32
 }
 
 func (t *Table) Entity() (util.WaiterEntity, error) {
@@ -50,6 +52,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		teamGroupSize: conf.Pvp / conf.Divide,
 		room:          room,
 		begin:         z.GetTime(),
+		countDown:     3,
 	}
 
 	profiles := make(map[int64]*proto.Profile, 0)
@@ -81,26 +84,41 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 }
 
 func (t *Table) BackToTable() {
-	t.BroadcastTableState(consts.COUNTDOWN)
-	time.Sleep(50 * time.Millisecond)
-	for i := 0; i < 3; i++ {
-		t.group.Broadcast("onCountDown", &proto.CountDownResp{
-			Counter: int32(3 - i),
-		})
+	t.BroadcastTableState(consts.COUNTDOWN, consts.COUNTDOWN_BEGIN)
+	time.Sleep(500 * time.Millisecond)
+
+	for t.countDown > 0 {
+		t.countDown--
+		t.BroadcastTableState(consts.COUNTDOWN, consts.NONE)
 		time.Sleep(time.Second)
 	}
-	t.BroadcastTableState(consts.GAMING)
+
+	t.BroadcastTableState(consts.GAMING, consts.GAME_BEGIN)
 }
 
 func (t *Table) AfterInit() {
 
 }
 
-func (t *Table) BroadcastTableState(s int32) {
-	t.state = s
+func (t *Table) BroadcastTableState(state int32, subState int32) {
+	t.state = state
+	var roomList []*proto.Room
+	var tableInfo *proto.TableInfo
+	switch t.state {
+	case consts.GAMING:
+		tableInfo = t.GetInfo()
+		break
+	case consts.SETTLEMENT:
+		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms)
+		break
+
+	}
 	t.group.Broadcast("onState", &proto.GameStateResp{
 		State:     t.state,
-		TableInfo: t.GetInfo(),
+		SubState:  subState,
+		TableInfo: tableInfo,
+		CountDown: t.countDown,
+		RoomList:  roomList,
 	})
 }
 
@@ -124,9 +142,12 @@ func (t *Table) ClientEnd(teamId int32) {
 	}
 
 	if t.loseCount >= t.teamGroupSize-1 {
-		t.BroadcastTableState(consts.SETTLEMENT)
+		t.BroadcastTableState(consts.SETTLEMENT, consts.SETTLEMENT_BEGIN)
 		log.Info("本轮结束 %s", t.tableId)
 	}
+	scheduler.NewAfterTimer(3*time.Second, func() {
+		t.BroadcastTableState(consts.SETTLEMENT, consts.SETTLEMENT_END)
+	})
 }
 
 func (t *Table) GetClient(uid int64) *Client {
@@ -154,6 +175,7 @@ func (t *Table) Clear() {
 }
 
 func (t *Table) Leave(s *session.Session) {
+	t.waiter.Leave(s)
 	t.group.Leave(s)
 }
 

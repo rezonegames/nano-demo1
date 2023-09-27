@@ -53,7 +53,7 @@ func StartUp() {
 		nano.WithWSPath("/nano"),
 		nano.WithIsWebsocket(true),
 		// 心跳
-		nano.WithHeartbeatInterval(5 * time.Second),
+		nano.WithHeartbeatInterval(30 * time.Second),
 		nano.WithLogger(log.GetLogger()),
 		nano.WithComponents(services),
 		nano.WithSerializer(protobuf.NewSerializer()),

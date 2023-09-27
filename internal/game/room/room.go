@@ -8,7 +8,7 @@ import (
 	"tetris/internal/game/util"
 )
 
-// NewWaiter waiter的设计是等待的模式，比如王者荣耀，斗地主满人就开等等
+// NewWaiter waiter是等待的方式，比如王者荣耀，斗地主满人就开，组队等待等等
 func NewWaiter(sList []*session.Session, room util.RoomEntity, table util.TableEntity) util.WaiterEntity {
 	var w util.WaiterEntity
 	conf := room.GetConfig()

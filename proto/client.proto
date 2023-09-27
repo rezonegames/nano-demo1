@@ -67,7 +67,9 @@ message CancelResp {
 message Ready {
 }
 
-message LeaveResp {}
+message LeaveResp {
+  ErrorCode code = 1;
+}
 
 message CountDownResp {
   ErrorCode code = 3;
@@ -79,9 +81,10 @@ message GameStateResp {
   int32 state = 2;
   int32 subState = 10;
   TableInfo tableInfo = 3;
-  repeated int64 readyList = 4;
+  map<int64, int64> readys = 4;
   map<int64, Profile> profiles =5;
   int32 countDown = 6;
+  repeated Room roomList = 7;
 }
 
 // TwoArray 二维数组[1:[0,0],2:[0,0]]

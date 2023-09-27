@@ -14,17 +14,31 @@ enum GameState {
   IDLE = 0;
   WAIT = 1;
   WAITREADY = 2;
-  COUNTDOWN = 3;
-  GAMING = 4;
-  SETTLEMENT = 5;
+  CANCEL = 3;
+  COUNTDOWN = 4;
+  GAMING = 5;
+  SETTLEMENT = 6;
 }
 
 enum GameStateWait {
-  WAITREADY_PROFILE = 0;
-  WAITREADY_COUNTDOWN = 1;
-  WAITREADY_READYLIST = 2;
+  WAITREADY_NONE = 0;
+  WAITREADY_PROFILE = 1;
+  WAITREADY_COUNTDOWN = 2;
+  WAITREADY_READYLIST = 3;
 }
 
 enum GameStateCountDown {
-    COUNTDOWN_BEGIN = 0;
+  COUNTDOWN_NONE = 0;
+  COUNTDOWN_BEGIN = 1;
+}
+
+enum GameStateGaming {
+  GAME_NONE = 0;
+  GAME_BEGIN = 1;
+}
+
+enum GameStateSettlement {
+  SETTLEMENT_NONE = 0;
+  SETTLEMENT_BEGIN = 1;
+  SETTLEMENT_END = 2;
 }

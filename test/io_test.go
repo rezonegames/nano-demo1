@@ -109,7 +109,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 			}
 			//tableId = tableInfo.TableId
 		}
-		fmt.Println(deviceId, "onState", v.State)
+		fmt.Println(deviceId, "onState", v.State, v.SubState)
 	})
 
 	c.On("onTeamLose", func(data interface{}) {
@@ -131,12 +131,11 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	ticker := time.NewTicker(time.Duration(ra) * time.Second)
 	defer ticker.Stop()
 
-	for /*i := 0; i < 1; i++*/ {
+	for {
 
 		select {
 		case <-chEnd:
 			fmt.Println("游戏结束了", uid)
-			return
 		case <-ticker.C:
 			switch state {
 			case consts.IDLE:
@@ -149,7 +148,9 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 					fmt.Println(deviceId, "join", state)
 				})
 			case consts.WAITREADY:
-				c.Notify("r.ready", &proto2.Ready{})
+				//c.Request("r.ready", &proto2.Ready{}, func(data interface{}) {
+				//	fmt.Println(deviceId, "ready")
+				//})
 
 			case consts.GAMING:
 				m := make([]*proto2.Array, 0)

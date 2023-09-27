@@ -22,7 +22,7 @@ type RoomEntity interface {
 type TableEntity interface {
 	AfterInit()
 	GetTableId() string
-	BroadcastTableState(s int32)
+	BroadcastTableState(state int32, subState int32)
 	UpdateState(s *session.Session, msg *proto.UpdateState) error
 	Clear()
 	Leave(s *session.Session)
@@ -36,6 +36,7 @@ type TableEntity interface {
 
 type WaiterEntity interface {
 	Ready(s *session.Session) error
+	Leave(s *session.Session) error
 	CheckAndDismiss()
 	AfterInit()
 }

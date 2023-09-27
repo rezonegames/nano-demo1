@@ -96,7 +96,9 @@ func (r *QuickRoom) BackToQueue(sList []*session.Session) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	r.queue = append(r.queue, sList...)
-	log.Debug("BackToQueue %+v %+v", sList, r.queue)
+	for _, v := range sList {
+		log.Debug("BackToQueue %d", v.UID())
+	}
 }
 
 func (r *QuickRoom) Ready(s *session.Session) error {
