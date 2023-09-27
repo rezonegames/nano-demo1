@@ -8,6 +8,13 @@ import (
 	"tetris/internal/game/util"
 )
 
+// NewWaiter 客户端类型，有可能是机器人，真人，以及结束方式可能不同，现在只有一种真人
+func NewClient(s *session.Session, teamId int32) util.ClientEntity {
+	var c util.ClientEntity
+	c = NewNormalClient(s, teamId)
+	return c
+}
+
 // NewWaiter waiter是等待的方式，比如王者荣耀，斗地主满人就开，组队等待等等
 func NewWaiter(sList []*session.Session, room util.RoomEntity, table util.TableEntity) util.WaiterEntity {
 	var w util.WaiterEntity

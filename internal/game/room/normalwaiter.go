@@ -23,6 +23,7 @@ type NormalWaiter struct {
 	countDown   int
 	stime       *scheduler.Timer
 	sList       []*session.Session
+	profiles    map[int64]*proto.Profile
 }
 
 // NewWaiter返回错误代表有人下线了
@@ -36,9 +37,11 @@ func NewNormalWaiter(sList []*session.Session, room util.RoomEntity, table util.
 		table:     table,
 		readys:    make(map[int64]int64, 0),
 		countDown: 30,
+		profiles:  make(map[int64]*proto.Profile, 0),
 	}
 	for _, v := range sList {
 		w.group.Add(v)
+		w.profiles[v.UID()] = util.ConvProfileToProtoProfile(table.GetClient(v).GetProfile())
 	}
 	w.sList = sList
 	return w
@@ -66,6 +69,8 @@ func (w *NormalWaiter) CheckAndDismiss() {
 		for _, v := range w.sList {
 			if _, ok := w.readys[v.UID()]; ok {
 				bList = append(bList, v)
+			} else {
+				w.group.Leave(v)
 			}
 		}
 		w.room.BackToQueue(bList)
@@ -77,6 +82,7 @@ func (w *NormalWaiter) CheckAndDismiss() {
 			State:     consts.WAITREADY,
 			SubState:  consts.WAITREADY_COUNTDOWN,
 			CountDown: int32(w.countDown) - w.timeCounter,
+			Profiles:  w.profiles,
 		})
 		return
 	}
@@ -89,7 +95,7 @@ func (w *NormalWaiter) CheckAndDismiss() {
 func (w *NormalWaiter) Ready(s *session.Session) error {
 	uid := s.UID()
 	if _, ok := w.readys[uid]; ok {
-		return nil
+		return s.Response(&proto.ReadyResp{})
 	}
 	w.readys[uid] = z.NowUnix()
 	return w.group.Broadcast("onState", &proto.GameStateResp{
@@ -97,6 +103,7 @@ func (w *NormalWaiter) Ready(s *session.Session) error {
 		SubState: consts.WAITREADY_READYLIST,
 		Readys:   w.readys,
 	})
+	return s.Response(&proto.ReadyResp{})
 }
 
 func (w *NormalWaiter) Leave(s *session.Session) error {

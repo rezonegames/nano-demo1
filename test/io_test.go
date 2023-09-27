@@ -148,9 +148,9 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 					fmt.Println(deviceId, "join", state)
 				})
 			case consts.WAITREADY:
-				//c.Request("r.ready", &proto2.Ready{}, func(data interface{}) {
-				//	fmt.Println(deviceId, "ready")
-				//})
+				c.Request("r.ready", &proto2.Ready{}, func(data interface{}) {
+					fmt.Println(deviceId, "ready")
+				})
 
 			case consts.GAMING:
 				m := make([]*proto2.Array, 0)
@@ -210,11 +210,11 @@ func TestGame(t *testing.T) {
 
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 5; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		go func(index int) {
-			client(fmt.Sprintf("robot%d", index), "1", wg)
+			client(fmt.Sprintf("robot%d", index), "3", wg)
 		}(i)
 	}
 

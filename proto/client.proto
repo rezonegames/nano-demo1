@@ -67,6 +67,10 @@ message CancelResp {
 message Ready {
 }
 
+message ReadyResp {
+  ErrorCode code = 1;
+}
+
 message LeaveResp {
   ErrorCode code = 1;
 }

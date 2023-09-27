@@ -71,11 +71,16 @@ func QueryHandler(c *gin.Context) {
 			name = p.Name
 		}
 	}
-
 	sc := config.ServerConfig
+	ip, err := z.GetIp()
+	if err != nil {
+		zweb.Response(c, &proto.AccountLoginResp{
+			Code: proto.ErrorCode_UnknownError,
+		})
+	}
 	resp := &proto.AccountLoginResp{
 		UserId: userId,
-		Addr:   fmt.Sprintf("127.0.0.1%s", sc.Addr),
+		Addr:   fmt.Sprintf("%s%s", ip, sc.Addr),
 		Name:   name,
 	}
 	zweb.Response(c, resp)

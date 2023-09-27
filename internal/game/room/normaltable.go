@@ -20,7 +20,7 @@ type Table struct {
 	group         *nano.Group
 	tableId       string
 	conf          *config.Room
-	clients       map[int64]*Client
+	clients       map[int64]util.ClientEntity
 	loseCount     int32
 	teamGroupSize int32
 	state         int32 // 从countdown =》settlement 结束
@@ -45,7 +45,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 	t := &Table{
 		group:         nano.NewGroup(tableId),
 		tableId:       tableId,
-		clients:       make(map[int64]*Client, 0),
+		clients:       make(map[int64]util.ClientEntity, 0),
 		state:         consts.WAITREADY,
 		conf:          conf,
 		loseCount:     0,
@@ -62,13 +62,15 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		if i > 0 && int32(i)%t.conf.Divide == 0 {
 			teamId++
 		}
-		t.clients[uid] = newClient(v, teamId)
+		c := NewClient(v, teamId)
+		t.clients[uid] = c
 		t.Join(v, t.GetTableId())
+
+		p := util.ConvProfileToProtoProfile(c.GetProfile())
+		p.TeamId = teamId
+		profiles[p.UserId] = p
+
 		log.Info("p2t %d %d", uid, teamId)
-		p, _ := util.GetProfile(v)
-		pp := util.ConvProfileToProtoProfile(p)
-		pp.TeamId = teamId
-		profiles[p.UserId] = pp
 	}
 	for _, s := range sList {
 		s.Push("onState", &proto.GameStateResp{
@@ -128,8 +130,8 @@ func (t *Table) ClientEnd(teamId int32) {
 
 	isTeamLose := true
 	for _, v := range t.clients {
-		if v.getTeamId() == teamId {
-			if !v.isEnd() {
+		if v.GetTeamId() == teamId {
+			if !v.IsEnd() {
 				isTeamLose = false
 			}
 		}
@@ -150,18 +152,18 @@ func (t *Table) ClientEnd(teamId int32) {
 	})
 }
 
-func (t *Table) GetClient(uid int64) *Client {
-	return t.clients[uid]
+func (t *Table) GetClient(s *session.Session) util.ClientEntity {
+	return t.clients[s.UID()]
 }
 
 func (t *Table) UpdateState(s *session.Session, msg *proto.UpdateState) error {
 	// Sync message to all members in this room
 	uid := s.UID()
-	c := t.GetClient(uid)
-	c.save(msg)
-	teamId := c.getTeamId()
+	c := t.GetClient(s)
+	c.Save(msg)
+	teamId := c.GetTeamId()
 	log.Info("updateState %d %d %v", uid, teamId, z.ToString(msg))
-	if c.isEnd() {
+	if c.IsEnd() {
 		t.ClientEnd(teamId)
 	}
 	return t.group.Broadcast("onStateUpdate", msg)
@@ -170,7 +172,7 @@ func (t *Table) UpdateState(s *session.Session, msg *proto.UpdateState) error {
 func (t *Table) Clear() {
 	t.group.Close()
 	for _, v := range t.clients {
-		util.RemoveTable(v.Session)
+		util.RemoveTable(v.GetSession())
 	}
 }
 
@@ -204,7 +206,7 @@ func (t *Table) CanDestory() bool {
 func (t *Table) GetInfo() *proto.TableInfo {
 	players := make(map[int64]*proto.TableInfo_Player, 0)
 	for k, v := range t.clients {
-		players[k] = v.getPlayer()
+		players[k] = v.GetPlayer()
 	}
 	return &proto.TableInfo{
 		Players:    players,

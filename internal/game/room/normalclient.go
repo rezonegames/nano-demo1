@@ -2,18 +2,22 @@ package room
 
 import (
 	"github.com/lonng/nano/session"
+	"tetris/internal/game/util"
+	"tetris/models"
 	"tetris/pkg/log"
 	"tetris/proto/proto"
 )
 
-type Client struct {
-	player *proto.TableInfo_Player
-	*session.Session
+type NormalClient struct {
+	player  *proto.TableInfo_Player
+	cs      *session.Session
+	profile *models.Profile
 }
 
 // 方块
-func newClient(s *session.Session, teamId int32) *Client {
-	return &Client{
+func NewNormalClient(s *session.Session, teamId int32) *NormalClient {
+	p, _ := util.GetProfile(s)
+	return &NormalClient{
 		player: &proto.TableInfo_Player{
 			TeamId: teamId,
 			State: &proto.State{
@@ -27,23 +31,24 @@ func newClient(s *session.Session, teamId int32) *Client {
 			End:   false,
 			Score: 0,
 		},
-		Session: s,
+		cs:      s,
+		profile: p,
 	}
 }
 
-func (c *Client) getPlayer() *proto.TableInfo_Player {
+func (c *NormalClient) GetPlayer() *proto.TableInfo_Player {
 	return c.player
 }
 
-func (c *Client) getTeamId() int32 {
+func (c *NormalClient) GetTeamId() int32 {
 	return c.player.TeamId
 }
 
-func (c *Client) isEnd() bool {
+func (c *NormalClient) IsEnd() bool {
 	return c.player.End
 }
 
-func (c *Client) save(msg *proto.UpdateState) {
+func (c *NormalClient) Save(msg *proto.UpdateState) {
 	fragment := msg.Fragment
 	log.Info("client save %s", fragment)
 
@@ -69,4 +74,12 @@ func (c *Client) save(msg *proto.UpdateState) {
 		c.player.State.Arena = arena
 	}
 	c.player.End = msg.End
+}
+
+func (c *NormalClient) GetProfile() *models.Profile {
+	return c.profile
+}
+
+func (c *NormalClient) GetSession() *session.Session {
+	return c.cs
 }
