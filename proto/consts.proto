@@ -10,6 +10,7 @@ enum AccountType {
   GIT = 3;
 }
 
+// 暂时这样，以后拆出来，游戏内状态和游戏外状态
 enum GameState {
   IDLE = 0;
   WAIT = 1;
@@ -20,25 +21,26 @@ enum GameState {
   SETTLEMENT = 6;
 }
 
-enum GameStateWait {
-  WAITREADY_NONE = 0;
+enum GameSubState {
+  SUBSTATE_NONE = 0;
   WAITREADY_PROFILE = 1;
   WAITREADY_COUNTDOWN = 2;
   WAITREADY_READYLIST = 3;
+  COUNTDOWN_BEGIN = 4;
+  GAME_BEGIN = 5;
+  GAME_LOSE = 6;
+  SETTLEMENT_BEGIN = 7;
+  SETTLEMENT_END = 8;
 }
 
-enum GameStateCountDown {
-  COUNTDOWN_NONE = 0;
-  COUNTDOWN_BEGIN = 1;
+enum RoomType {
+  ROOMTYPE_NONE = 0;
+  QUICK = 1;
+  MATCH = 2;
 }
 
-enum GameStateGaming {
-  GAME_NONE = 0;
-  GAME_BEGIN = 1;
-}
-
-enum GameStateSettlement {
-  SETTLEMENT_NONE = 0;
-  SETTLEMENT_BEGIN = 1;
-  SETTLEMENT_END = 2;
+enum TableType {
+  TABLETYPE_NONE =0;
+  NORMAL = 1;
+  HAPPY = 2;
 }

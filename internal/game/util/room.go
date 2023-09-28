@@ -23,7 +23,7 @@ type RoomEntity interface {
 type TableEntity interface {
 	AfterInit()
 	GetTableId() string
-	BroadcastTableState(state int32, subState int32)
+	BroadcastTableState(state proto.GameState, subState proto.GameSubState)
 	UpdateState(s *session.Session, msg *proto.UpdateState) error
 	Clear()
 	Leave(s *session.Session)

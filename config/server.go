@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"tetris/proto/proto"
+)
 
 type Server struct {
 	AppName         string        `yaml:"appName"`
@@ -29,13 +32,13 @@ type Mongo struct {
 }
 
 type Room struct {
-	RoomId    string `yaml:"roomId"`
-	Pvp       int32  `yaml:"pvp"`
-	Divide    int32  `yaml:"divide"`
-	Name      string `yaml:"name"`
-	MinCoin   int32  `yaml:"minCoin"`
-	RoomType  int32  `yaml:"roomType"`
-	TableType int32  `yaml:"tableType"`
+	RoomId    string          `yaml:"roomId"`
+	Pvp       int32           `yaml:"pvp"`
+	Divide    int32           `yaml:"divide"`
+	Name      string          `yaml:"name"`
+	MinCoin   int32           `yaml:"minCoin"`
+	RoomType  proto.RoomType  `yaml:"roomType"`
+	TableType proto.TableType `yaml:"tableType"`
 }
 
 func (r *Room) Dump() string {

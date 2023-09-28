@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/lonng/nano/session"
 	"tetris/config"
-	"tetris/consts"
 	"tetris/internal/game/util"
+	"tetris/proto/proto"
 )
 
 // NewWaiter 客户端类型，有可能是机器人，真人，以及结束方式可能不同，现在只有一种真人
@@ -20,7 +20,7 @@ func NewWaiter(sList []*session.Session, room util.RoomEntity, table util.TableE
 	var w util.WaiterEntity
 	conf := room.GetConfig()
 	switch conf.RoomType {
-	case consts.QUICK:
+	case proto.RoomType_QUICK:
 		w = NewNormalWaiter(sList, room, table)
 	default:
 		panic(fmt.Sprintf("NewWaiter unknown room type %s", conf.RoomType))
@@ -34,7 +34,7 @@ func NewTable(room util.RoomEntity, ss []*session.Session) util.TableEntity {
 	conf := room.GetConfig()
 	var t util.TableEntity
 	switch conf.TableType {
-	case consts.NORMAL:
+	case proto.TableType_NORMAL:
 		t = NewNormalTable(room, ss)
 	default:
 		panic(fmt.Sprintf("NewTable unknown type %s", conf.TableType))
@@ -47,7 +47,7 @@ func NewTable(room util.RoomEntity, ss []*session.Session) util.TableEntity {
 func NewRoom(conf *config.Room) util.RoomEntity {
 	var r util.RoomEntity
 	switch conf.RoomType {
-	case consts.QUICK:
+	case proto.RoomType_QUICK:
 		r = NewQuickRoom(conf)
 	default:
 		panic(fmt.Sprintf("NewRoom unknown type %s", conf.RoomType))

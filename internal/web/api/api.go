@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"tetris/config"
-	"tetris/consts"
 	"tetris/models"
 	"tetris/pkg/log"
 	"tetris/pkg/z"
@@ -33,15 +32,15 @@ func QueryHandler(c *gin.Context) {
 	}
 	var userId int64
 	switch partition {
-	case consts.DEVICEID:
+	case proto.AccountType_DEVICEID:
 		fallthrough
-	case consts.FB:
+	case proto.AccountType_FB:
 		fallthrough
-	case consts.WX:
+	case proto.AccountType_WX:
 		a, err := models.GetAccount(accountId)
 		if err != nil {
 			if _, ok := err.(z.NilError); ok {
-				a = models.NewAccount(partition, accountId)
+				a = models.NewAccount(int32(partition), accountId)
 				err = models.CreateAccount(a)
 				if err != nil {
 					zweb.Response(c, &proto.AccountLoginResp{

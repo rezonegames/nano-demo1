@@ -7,7 +7,6 @@ import (
 	"github.com/lonng/nano/session"
 	"sync"
 	"tetris/config"
-	"tetris/consts"
 	"tetris/internal/game/util"
 	"tetris/pkg/log"
 	"tetris/pkg/z"
@@ -24,7 +23,7 @@ type Table struct {
 	loseCount     int32
 	loseTeams     map[int32]int64
 	teamGroupSize int32
-	state         int32 // 从countdown =》settlement 结束
+	state         proto.GameState // 从countdown =》settlement 结束
 	lock          sync.RWMutex
 	waiter        util.WaiterEntity
 	room          util.RoomEntity
@@ -47,7 +46,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		group:         nano.NewGroup(tableId),
 		tableId:       tableId,
 		clients:       make(map[int64]util.ClientEntity, 0),
-		state:         consts.WAITREADY,
+		state:         proto.GameState_WAITREADY,
 		conf:          conf,
 		loseCount:     0,
 		loseTeams:     make(map[int32]int64, 0),
@@ -76,8 +75,8 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 	}
 	for _, s := range sList {
 		s.Push("onState", &proto.GameStateResp{
-			State:    consts.WAITREADY,
-			SubState: consts.WAITREADY_PROFILE,
+			State:    proto.GameState_WAITREADY,
+			SubState: proto.GameSubState_WAITREADY_PROFILE,
 			Profiles: profiles,
 		})
 	}
@@ -88,33 +87,37 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 }
 
 func (t *Table) BackToTable() {
-	t.BroadcastTableState(consts.COUNTDOWN, consts.COUNTDOWN_BEGIN)
+	t.BroadcastTableState(proto.GameState_COUNTDOWN, proto.GameSubState_COUNTDOWN_BEGIN)
 	time.Sleep(500 * time.Millisecond)
 
 	for t.countDown > 0 {
 		t.countDown--
-		t.BroadcastTableState(consts.COUNTDOWN, consts.NONE)
+		t.BroadcastTableState(proto.GameState_COUNTDOWN, proto.GameSubState_SUBSTATE_NONE)
 		time.Sleep(time.Second)
 	}
 
-	t.BroadcastTableState(consts.GAMING, consts.GAME_BEGIN)
+	t.BroadcastTableState(proto.GameState_GAMING, proto.GameSubState_GAME_BEGIN)
 }
 
 func (t *Table) AfterInit() {
 
 }
 
-func (t *Table) BroadcastTableState(state int32, subState int32) {
+func (t *Table) BroadcastTableState(state proto.GameState, subState proto.GameSubState) {
 	t.state = state
 	var roomList []*proto.Room
 	var tableInfo *proto.TableInfo
+	profiles := make(map[int64]*proto.Profile, 0)
 	switch t.state {
-	case consts.GAMING:
+	case proto.GameState_GAMING:
+		tableInfo = t.GetInfo()
+		break
+	case proto.GameState_SETTLEMENT:
 		tableInfo = t.GetInfo()
 		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms)
-		break
-	case consts.SETTLEMENT:
-		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms)
+		for k, v := range t.clients {
+			profiles[k] = util.ConvProfileToProtoProfile(v.GetProfile())
+		}
 		break
 
 	}
@@ -124,6 +127,7 @@ func (t *Table) BroadcastTableState(state int32, subState int32) {
 		TableInfo: tableInfo,
 		CountDown: t.countDown,
 		RoomList:  roomList,
+		Profiles:  profiles,
 	})
 }
 
@@ -143,16 +147,16 @@ func (t *Table) ClientEnd(teamId int32) {
 	if isTeamLose {
 		t.loseCount++
 		t.loseTeams[teamId] = z.NowUnix()
-		t.BroadcastTableState(consts.GAMING, consts.GAME_LOSE)
+		t.BroadcastTableState(proto.GameState_GAMING, proto.GameSubState_GAME_LOSE)
 		log.Info("队伍 %d 结束", teamId)
 	}
 
 	if t.loseCount >= t.teamGroupSize-1 {
-		t.BroadcastTableState(consts.SETTLEMENT, consts.SETTLEMENT_BEGIN)
+		t.BroadcastTableState(proto.GameState_SETTLEMENT, proto.GameSubState_SETTLEMENT_BEGIN)
 		log.Info("本轮结束 %s", t.tableId)
 	}
 	scheduler.NewAfterTimer(3*time.Second, func() {
-		t.BroadcastTableState(consts.SETTLEMENT, consts.SETTLEMENT_END)
+		t.BroadcastTableState(proto.GameState_SETTLEMENT, proto.GameSubState_SETTLEMENT_END)
 	})
 }
 
@@ -192,10 +196,10 @@ func (t *Table) Join(s *session.Session, tableId string) error {
 
 func (t *Table) CanDestory() bool {
 	switch t.state {
-	case consts.SETTLEMENT:
-	case consts.CANCEL:
+	case proto.GameState_SETTLEMENT:
+	case proto.GameState_CANCEL:
 		return true
-	case consts.WAITREADY:
+	case proto.GameState_WAITREADY:
 		// 1分钟了，还是这个状态，销毁之
 		if z.GetTime().Sub(t.begin) > time.Minute {
 			return true

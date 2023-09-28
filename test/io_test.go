@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"sync"
 	"testing"
-	"tetris/consts"
 	"tetris/pkg/z"
 	proto2 "tetris/proto/proto"
 	"time"
@@ -21,7 +20,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 
 	url := "http://127.0.0.1:8000/v1/login"
 	aa := &proto2.AccountLoginReq{
-		Partition: consts.DEVICEID,
+		Partition: proto2.AccountType_DEVICEID,
 		AccountId: deviceId,
 	}
 	input, _ := ss.Marshal(aa)
@@ -66,7 +65,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	chEnd := make(chan interface{}, 0)
 
 	uid := respMsg.UserId
-	state := consts.IDLE
+	state := proto2.GameState_IDLE
 	if uid == 0 {
 		c.Request("g.register", &proto2.RegisterGameReq{Name: deviceId, AccountId: aa.AccountId}, func(data interface{}) {
 			chLogin <- struct{}{}
@@ -128,7 +127,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 			fmt.Println("游戏结束了", uid)
 		case <-ticker.C:
 			switch state {
-			case consts.IDLE:
+			case proto2.GameState_IDLE:
 				c.Request("r.join", &proto2.Join{
 					RoomId: rid,
 				}, func(data interface{}) {
@@ -137,12 +136,12 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 					state = v.State
 					fmt.Println(deviceId, "join", state)
 				})
-			case consts.WAITREADY:
+			case proto2.GameState_WAITREADY:
 				c.Request("r.ready", &proto2.Ready{}, func(data interface{}) {
 					fmt.Println(deviceId, "ready")
 				})
 
-			case consts.GAMING:
+			case proto2.GameState_GAMING:
 				m := make([]*proto2.Array, 0)
 				m = append(m, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 0}, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 1})
 
@@ -166,8 +165,8 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 				}, func(data interface{}) {
 					fmt.Println(deviceId, "syncmessage")
 				})
-			case consts.SETTLEMENT:
-				state = consts.IDLE
+			case proto2.GameState_SETTLEMENT:
+				state = proto2.GameState_IDLE
 			}
 		default:
 

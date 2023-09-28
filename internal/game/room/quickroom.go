@@ -5,7 +5,6 @@ import (
 	"github.com/lonng/nano/session"
 	"sync"
 	"tetris/config"
-	"tetris/consts"
 	"tetris/internal/game/util"
 	"tetris/pkg/log"
 	"tetris/pkg/z"
@@ -140,7 +139,7 @@ func (r *QuickRoom) Join(s *session.Session) error {
 	util.SetRoomId(s, r.config.RoomId)
 	log.Info("%s addToQueue %d", r.config.RoomId, s.UID())
 	return s.Response(&proto.GameStateResp{
-		State: consts.WAIT,
+		State: proto.GameState_WAIT,
 	})
 }
 

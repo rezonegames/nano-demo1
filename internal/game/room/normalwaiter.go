@@ -5,7 +5,6 @@ import (
 	"github.com/lonng/nano"
 	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
-	"tetris/consts"
 	"tetris/internal/game/util"
 	"tetris/pkg/log"
 	"tetris/pkg/z"
@@ -75,12 +74,12 @@ func (w *NormalWaiter) CheckAndDismiss() {
 		}
 		w.room.BackToQueue(bList)
 		w.group.Broadcast("onState", &proto.GameStateResp{
-			State: consts.WAIT,
+			State: proto.GameState_WAIT,
 		})
 	} else {
 		w.group.Broadcast("onState", &proto.GameStateResp{
-			State:     consts.WAITREADY,
-			SubState:  consts.WAITREADY_COUNTDOWN,
+			State:     proto.GameState_WAITREADY,
+			SubState:  proto.GameSubState_WAITREADY_COUNTDOWN,
 			CountDown: int32(w.countDown) - w.timeCounter,
 			Profiles:  w.profiles,
 		})
@@ -99,8 +98,8 @@ func (w *NormalWaiter) Ready(s *session.Session) error {
 	}
 	w.readys[uid] = z.NowUnix()
 	return w.group.Broadcast("onState", &proto.GameStateResp{
-		State:    consts.WAITREADY,
-		SubState: consts.WAITREADY_READYLIST,
+		State:    proto.GameState_WAITREADY,
+		SubState: proto.GameSubState_WAITREADY_READYLIST,
 		Readys:   w.readys,
 	})
 	return s.Response(&proto.ReadyResp{})
