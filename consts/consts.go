@@ -38,6 +38,7 @@ const (
 // 进入游戏
 const (
 	GAME_BEGIN int32 = iota + 1
+	GAME_LOSE
 )
 
 // 结算

@@ -65,7 +65,6 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	chLogin := make(chan struct{})
 	chEnd := make(chan interface{}, 0)
 
-	var teamId int32
 	uid := respMsg.UserId
 	state := consts.IDLE
 	if uid == 0 {
@@ -104,21 +103,12 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 		if v.TableInfo != nil {
 			for k, v := range tableInfo.Players {
 				if k == uid {
-					teamId = v.TeamId
+					fmt.Println(deviceId, "teamId", v.TeamId)
 				}
 			}
 			//tableId = tableInfo.TableId
 		}
 		fmt.Println(deviceId, "onState", v.State, v.SubState)
-	})
-
-	c.On("onTeamLose", func(data interface{}) {
-		v := proto2.TeamLose{}
-		ss.Unmarshal(data.([]byte), &v)
-
-		if v.TeamId == teamId {
-			chEnd <- struct{}{}
-		}
 	})
 
 	c.On("onStateUpdate", func(data interface{}) {
@@ -210,11 +200,11 @@ func TestGame(t *testing.T) {
 
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		go func(index int) {
-			client(fmt.Sprintf("robot%d", index), "3", wg)
+			client(fmt.Sprintf("robot%d", index), "1", wg)
 		}(i)
 	}
 

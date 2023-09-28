@@ -86,7 +86,7 @@ message GameStateResp {
   int32 subState = 10;
   TableInfo tableInfo = 3;
   map<int64, int64> readys = 4;
-  map<int64, Profile> profiles =5;
+  map<int64, Profile> profiles = 5;
   int32 countDown = 6;
   repeated Room roomList = 7;
 }
@@ -94,7 +94,7 @@ message GameStateResp {
 // TwoArray 二维数组[1:[0,0],2:[0,0]]
 message Array {
   repeated uint32 v = 1;
-  int32 i =2;
+  int32 i = 2;
 }
 
 //Pos 坐标
@@ -135,8 +135,5 @@ message TableInfo {
   map<int64, Player>  players = 1;
   string tableId = 2;
   int32 tableState = 3;
-}
-
-message TeamLose {
-  int32 teamId = 1;
+  map<int32, int64>loseTeams = 4;
 }

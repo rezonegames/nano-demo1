@@ -22,6 +22,7 @@ type Table struct {
 	conf          *config.Room
 	clients       map[int64]util.ClientEntity
 	loseCount     int32
+	loseTeams     map[int32]int64
 	teamGroupSize int32
 	state         int32 // 从countdown =》settlement 结束
 	lock          sync.RWMutex
@@ -49,6 +50,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		state:         consts.WAITREADY,
 		conf:          conf,
 		loseCount:     0,
+		loseTeams:     make(map[int32]int64, 0),
 		teamGroupSize: conf.Pvp / conf.Divide,
 		room:          room,
 		begin:         z.GetTime(),
@@ -109,6 +111,7 @@ func (t *Table) BroadcastTableState(state int32, subState int32) {
 	switch t.state {
 	case consts.GAMING:
 		tableInfo = t.GetInfo()
+		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms)
 		break
 	case consts.SETTLEMENT:
 		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms)
@@ -139,7 +142,8 @@ func (t *Table) ClientEnd(teamId int32) {
 	// onTeamLose
 	if isTeamLose {
 		t.loseCount++
-		t.group.Broadcast("onTeamLose", &proto.TeamLose{TeamId: teamId})
+		t.loseTeams[teamId] = z.NowUnix()
+		t.BroadcastTableState(consts.GAMING, consts.GAME_LOSE)
 		log.Info("队伍 %d 结束", teamId)
 	}
 
@@ -212,6 +216,7 @@ func (t *Table) GetInfo() *proto.TableInfo {
 		Players:    players,
 		TableId:    t.tableId,
 		TableState: t.state,
+		LoseTeams:  t.loseTeams,
 	}
 }
 
