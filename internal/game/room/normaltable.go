@@ -116,7 +116,9 @@ func (t *Table) BroadcastTableState(state proto.GameState, subState proto.GameSu
 		tableInfo = t.GetInfo()
 		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms)
 		for k, v := range t.clients {
-			profiles[k] = util.ConvProfileToProtoProfile(v.GetProfile())
+			p := util.ConvProfileToProtoProfile(v.GetProfile())
+			p.TeamId = v.GetTeamId()
+			profiles[k] = p
 		}
 		break
 

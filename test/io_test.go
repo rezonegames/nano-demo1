@@ -121,10 +121,11 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	defer ticker.Stop()
 
 	for {
-
 		select {
 		case <-chEnd:
 			fmt.Println("游戏结束了", uid)
+			c.Close()
+			return
 		case <-ticker.C:
 			switch state {
 			case proto2.GameState_IDLE:
@@ -199,11 +200,11 @@ func TestGame(t *testing.T) {
 
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 4; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		go func(index int) {
-			client(fmt.Sprintf("robot%d", index), "1", wg)
+			client(fmt.Sprintf("robot%d", index), "3", wg)
 		}(i)
 	}
 
