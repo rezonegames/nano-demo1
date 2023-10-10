@@ -58,18 +58,20 @@ func (w *NormalWaiter) AfterInit() {
 func (w *NormalWaiter) CheckAndDismiss() {
 	// 中途有离开或者10秒倒计时有玩家没有准备，返回到队列
 	//log.Debug("CheckAndDismiss %d %d", len(w.readys), w.group.Count())
+	hasLeave := w.group.Count() != len(w.sList)
 	if len(w.readys) == len(w.sList) {
 		log.Debug("waiter done %s", w.table.GetTableId())
 		w.table.BackToTable()
-	} else if (w.timeCounter >= int32(w.countDown) && len(w.readys) < len(w.sList)) ||
-		w.group.Count() != len(w.sList) {
+	} else if (w.timeCounter >= int32(w.countDown) && len(w.readys) < len(w.sList)) || hasLeave {
 		log.Debug("Dismiss waiter!!")
 		bList := make([]*session.Session, 0)
 		for _, v := range w.sList {
 			if _, ok := w.readys[v.UID()]; ok {
 				bList = append(bList, v)
 			} else {
-				w.group.Leave(v)
+				if hasLeave && w.group.Contains(v.UID()) {
+					bList = append(bList, v)
+				}
 			}
 		}
 		w.room.BackToQueue(bList)
@@ -106,5 +108,6 @@ func (w *NormalWaiter) Ready(s *session.Session) error {
 }
 
 func (w *NormalWaiter) Leave(s *session.Session) error {
+	delete(w.readys, s.UID())
 	return w.group.Leave(s)
 }

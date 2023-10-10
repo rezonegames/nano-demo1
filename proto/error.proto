@@ -9,4 +9,5 @@ enum ErrorCode {
   UnknownError = 2;
   ParameterError = 3;
   AccountIdError = 4;
+  AlreadyInRoom = 5;
 }

@@ -1,6 +1,7 @@
 package room
 
 import (
+	"fmt"
 	"github.com/lonng/nano"
 	"github.com/lonng/nano/session"
 	"sync"
@@ -132,6 +133,12 @@ func (r *QuickRoom) Leave(s *session.Session) error {
 }
 
 func (r *QuickRoom) Join(s *session.Session) error {
+	if rid, err := util.GetRoomId(s); err == nil && rid != r.config.RoomId {
+		return s.Response(&proto.GameStateResp{
+			Code:   proto.ErrorCode_AlreadyInRoom,
+			ErrMsg: fmt.Sprintf(`在另一个房间 %s`, rid),
+		})
+	}
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	r.queue = append(r.queue, s)

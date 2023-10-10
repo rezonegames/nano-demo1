@@ -73,6 +73,7 @@ func (AccountType) EnumDescriptor() ([]byte, []int) {
 	return file_consts_proto_rawDescGZIP(), []int{0}
 }
 
+// 暂时这样，以后拆出来，游戏内状态和游戏外状态
 type GameState int32
 
 const (

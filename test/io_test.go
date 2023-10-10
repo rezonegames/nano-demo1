@@ -116,7 +116,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 		fmt.Println(z.ToString(v))
 	})
 
-	ra := z.RandInt(6, 10)
+	ra := z.RandInt(1, 3)
 	ticker := time.NewTicker(time.Duration(ra) * time.Second)
 	defer ticker.Stop()
 
@@ -200,11 +200,11 @@ func TestGame(t *testing.T) {
 
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		go func(index int) {
-			client(fmt.Sprintf("robot%d", index), "3", wg)
+			client(fmt.Sprintf("robot%d", index), "1", wg)
 		}(i)
 	}
 

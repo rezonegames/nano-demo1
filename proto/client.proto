@@ -83,6 +83,7 @@ message CountDownResp {
 
 message GameStateResp {
   ErrorCode code = 1;
+  string errMsg = 11;
   GameState state = 2;
   GameSubState subState = 10;
   TableInfo tableInfo = 3;
