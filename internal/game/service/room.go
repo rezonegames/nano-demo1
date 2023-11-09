@@ -64,7 +64,7 @@ func (r *RoomService) Ready(s *session.Session, msg *proto.Ready) error {
 func (r *RoomService) Cancel(s *session.Session, msg *proto.Cancel) error {
 	rid, err := util.GetRoomId(s)
 	if err != nil {
-		return s.Response(&proto.CancelResp{})
+		return s.Response(&proto.CancelResp{Code: proto.ErrorCode_OK})
 	}
 	entity, err := r.entity(rid)
 	if err != nil {

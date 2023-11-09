@@ -19,10 +19,9 @@ type NormalWaiter struct {
 	room        util.RoomEntity
 	table       util.TableEntity
 	timeCounter int32
-	countDown   int
+	countDown   int32
 	stime       *scheduler.Timer
 	sList       []*session.Session
-	profiles    map[int64]*proto.Profile
 }
 
 // NewWaiter返回错误代表有人下线了
@@ -36,18 +35,16 @@ func NewNormalWaiter(sList []*session.Session, room util.RoomEntity, table util.
 		table:     table,
 		readys:    make(map[int64]int64, 0),
 		countDown: 30,
-		profiles:  make(map[int64]*proto.Profile, 0),
 	}
 	for _, v := range sList {
 		w.group.Add(v)
-		w.profiles[v.UID()] = util.ConvProfileToProtoProfile(table.GetClient(v).GetProfile())
 	}
 	w.sList = sList
 	return w
 }
 
 func (w *NormalWaiter) AfterInit() {
-	w.stime = scheduler.NewCountTimer(time.Second, w.countDown, func() {
+	w.stime = scheduler.NewCountTimer(time.Second, int(w.countDown), func() {
 		w.timeCounter++
 		// 都准备好了或者又离开的，解散waiter
 		w.CheckAndDismiss()
@@ -75,16 +72,10 @@ func (w *NormalWaiter) CheckAndDismiss() {
 			}
 		}
 		w.room.BackToQueue(bList)
-		w.group.Broadcast("onState", &proto.GameStateResp{
-			State: proto.GameState_WAIT,
-		})
 	} else {
-		w.group.Broadcast("onState", &proto.GameStateResp{
-			State:     proto.GameState_WAITREADY,
-			SubState:  proto.GameSubState_WAITREADY_COUNTDOWN,
-			CountDown: int32(w.countDown) - w.timeCounter,
-			Profiles:  w.profiles,
-		})
+		//
+		// 等待准备倒计时
+		w.table.BroadcastTableState(proto.TableState_WAITREADY)
 		return
 	}
 	w.group.Close()
@@ -92,19 +83,27 @@ func (w *NormalWaiter) CheckAndDismiss() {
 	w.stime.Stop()
 }
 
+//
+// 返回等待信息
+func (w *NormalWaiter) GetInfo() *proto.TableInfo_Waiter {
+	return &proto.TableInfo_Waiter{
+		Readys:    w.readys,
+		CountDown: w.countDown - w.timeCounter,
+	}
+}
+
+//
 // Ready 准备
 func (w *NormalWaiter) Ready(s *session.Session) error {
 	uid := s.UID()
 	if _, ok := w.readys[uid]; ok {
-		return s.Response(&proto.ReadyResp{})
+		return s.Response(&proto.ReadyResp{Code: proto.ErrorCode_OK})
 	}
 	w.readys[uid] = z.NowUnix()
-	return w.group.Broadcast("onState", &proto.GameStateResp{
-		State:    proto.GameState_WAITREADY,
-		SubState: proto.GameSubState_WAITREADY_READYLIST,
-		Readys:   w.readys,
-	})
-	return s.Response(&proto.ReadyResp{})
+	//
+	// 有玩家准备好了
+	w.table.BroadcastTableState(proto.TableState_WAITREADY)
+	return s.Response(&proto.ReadyResp{Code: proto.ErrorCode_OK})
 }
 
 func (w *NormalWaiter) Leave(s *session.Session) error {

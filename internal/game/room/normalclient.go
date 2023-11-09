@@ -21,18 +21,19 @@ func NewNormalClient(s *session.Session, teamId int32) *NormalClient {
 		player: &proto.TableInfo_Player{
 			TeamId: teamId,
 			State: &proto.State{
-				Arena: nil,
+				Arena: &proto.Arena{Matrix: nil},
 				Player: &proto.Player{
 					Matrix: nil,
 					Pos:    nil,
 					Score:  0,
 				},
 			},
-			End:   false,
-			Score: 0,
+			End:     false,
+			Score:   0,
+			Profile: util.ConvProfileToProtoProfile(p),
 		},
-		cs:      s,
-		profile: p,
+		cs: s,
+		//profile: p,
 	}
 }
 
@@ -74,10 +75,6 @@ func (c *NormalClient) Save(msg *proto.UpdateState) {
 		c.player.State.Arena = arena
 	}
 	c.player.End = msg.End
-}
-
-func (c *NormalClient) GetProfile() *models.Profile {
-	return c.profile
 }
 
 func (c *NormalClient) GetSession() *session.Session {

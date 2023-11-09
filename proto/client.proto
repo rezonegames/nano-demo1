@@ -49,6 +49,7 @@ message GetRoomListResp {
   repeated Room roomList = 2;
 }
 
+//
 // game服务
 message Join {
   string roomId = 1;
@@ -76,21 +77,14 @@ message LeaveResp {
   ErrorCode code = 1;
 }
 
-message CountDownResp {
-  ErrorCode code = 3;
-  int32 counter = 1;
-}
-
+//
+// 在每一个步骤，下发游戏状态
 message GameStateResp {
   ErrorCode code = 1;
-  string errMsg = 11;
-  GameState state = 2;
-  GameSubState subState = 10;
-  TableInfo tableInfo = 3;
-  map<int64, int64> readys = 4;
-  map<int64, Profile> profiles = 5;
-  int32 countDown = 6;
-  repeated Room roomList = 7;
+  string errMsg = 2;
+  GameState state = 3;
+  TableInfo tableInfo = 5;
+  repeated Room roomList = 6;
 }
 
 // TwoArray 二维数组[1:[0,0],2:[0,0]]
@@ -105,37 +99,63 @@ message Pos {
   uint32 y = 2;
 }
 
+//
+// 玩家数据
 message Player {
   repeated Array matrix = 1;
   Pos pos = 2;
   uint32 score = 3;
 }
 
+//
+// 区域数据
+message Arena {
+  repeated Array matrix = 1;
+}
+
 message State {
-  repeated Array arena = 1;
+  Arena arena = 1;
   Player player = 2;
 }
 
-// UpdateState 玩家上传的方块数据
+//
+// UpdateState 玩家上传数据，包括arena数据和player数据
 message UpdateState {
-  string fragment = 3;
+  //
+  // arena|player
+  string fragment = 1;
+  //
   // pos|matrix|score
-  Player player = 4;
+  Player player = 2;
+  //
   // arena
-  repeated Array arena = 5;
-  int64 playerId = 6;
+  Arena arena = 3;
+  //
+  //
+  int64 playerId = 4;
   bool end = 10;
 }
 
+//
+// 下发桌子信息
 message TableInfo {
   message Player {
     int32 teamId = 1;
     State state = 2;
     bool end = 3;
     int32 score = 4;
+    Profile profile = 5;
   }
+
+  message Waiter {
+    map<int64, int64> readys = 4;
+    int32 countDown = 6;
+  }
+
   map<int64, Player>  players = 1;
   string tableId = 2;
-  GameState tableState = 3;
-  map<int32, int64>loseTeams = 4;
+  TableState tableState = 3;
+  map<int32, int64>loseTeams = 5;
+  Waiter waiter = 6;
+  int32 countDown = 7;
 }

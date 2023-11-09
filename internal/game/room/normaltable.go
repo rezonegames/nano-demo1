@@ -3,7 +3,6 @@ package room
 import (
 	"fmt"
 	"github.com/lonng/nano"
-	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
 	"sync"
 	"tetris/config"
@@ -23,7 +22,7 @@ type Table struct {
 	loseCount     int32
 	loseTeams     map[int32]int64
 	teamGroupSize int32
-	state         proto.GameState // 从countdown =》settlement 结束
+	state         proto.TableState // 从countdown =》settlement 结束
 	lock          sync.RWMutex
 	waiter        util.WaiterEntity
 	room          util.RoomEntity
@@ -46,7 +45,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		group:         nano.NewGroup(tableId),
 		tableId:       tableId,
 		clients:       make(map[int64]util.ClientEntity, 0),
-		state:         proto.GameState_WAITREADY,
+		state:         proto.TableState_STATE_NONE,
 		conf:          conf,
 		loseCount:     0,
 		loseTeams:     make(map[int32]int64, 0),
@@ -56,7 +55,6 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		countDown:     3,
 	}
 
-	profiles := make(map[int64]*proto.Profile, 0)
 	var teamId int32
 	for i, v := range sList {
 		uid := v.UID()
@@ -67,69 +65,43 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		t.clients[uid] = c
 		t.Join(v, t.GetTableId())
 
-		p := util.ConvProfileToProtoProfile(c.GetProfile())
-		p.TeamId = teamId
-		profiles[p.UserId] = p
-
 		log.Info("p2t %d %d", uid, teamId)
 	}
-	for _, s := range sList {
-		s.Push("onState", &proto.GameStateResp{
-			State:    proto.GameState_WAITREADY,
-			SubState: proto.GameSubState_WAITREADY_PROFILE,
-			Profiles: profiles,
-		})
-	}
-
 	log.Info("newTable start %s", tableId)
 	t.waiter = NewWaiter(sList, room, t)
+
+	t.BroadcastTableState(proto.TableState_WAITREADY)
+
 	return t
 }
 
 func (t *Table) BackToTable() {
-	t.BroadcastTableState(proto.GameState_COUNTDOWN, proto.GameSubState_COUNTDOWN_BEGIN)
-	time.Sleep(500 * time.Millisecond)
-
 	for t.countDown > 0 {
-		t.countDown--
-		t.BroadcastTableState(proto.GameState_COUNTDOWN, proto.GameSubState_SUBSTATE_NONE)
 		time.Sleep(time.Second)
+		t.countDown--
+		t.BroadcastTableState(proto.TableState_COUNTDOWN)
 	}
-
-	t.BroadcastTableState(proto.GameState_GAMING, proto.GameSubState_GAME_BEGIN)
+	//
+	// 倒计时结束开始游戏
+	t.BroadcastTableState(proto.TableState_GAMING)
 }
 
 func (t *Table) AfterInit() {
 
 }
 
-func (t *Table) BroadcastTableState(state proto.GameState, subState proto.GameSubState) {
+func (t *Table) BroadcastTableState(state proto.TableState) {
 	t.state = state
 	var roomList []*proto.Room
-	var tableInfo *proto.TableInfo
-	profiles := make(map[int64]*proto.Profile, 0)
 	switch t.state {
-	case proto.GameState_GAMING:
-		tableInfo = t.GetInfo()
-		break
-	case proto.GameState_SETTLEMENT:
-		tableInfo = t.GetInfo()
+	case proto.TableState_SETTLEMENT:
 		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms)
-		for k, v := range t.clients {
-			p := util.ConvProfileToProtoProfile(v.GetProfile())
-			p.TeamId = v.GetTeamId()
-			profiles[k] = p
-		}
 		break
-
 	}
 	t.group.Broadcast("onState", &proto.GameStateResp{
-		State:     t.state,
-		SubState:  subState,
-		TableInfo: tableInfo,
-		CountDown: t.countDown,
+		State:     proto.GameState_INGAME,
+		TableInfo: t.GetInfo(),
 		RoomList:  roomList,
-		Profiles:  profiles,
 	})
 }
 
@@ -149,17 +121,14 @@ func (t *Table) ClientEnd(teamId int32) {
 	if isTeamLose {
 		t.loseCount++
 		t.loseTeams[teamId] = z.NowUnix()
-		t.BroadcastTableState(proto.GameState_GAMING, proto.GameSubState_GAME_LOSE)
+		t.BroadcastTableState(proto.TableState_GAMING)
 		log.Info("队伍 %d 结束", teamId)
 	}
 
 	if t.loseCount >= t.teamGroupSize-1 {
-		t.BroadcastTableState(proto.GameState_SETTLEMENT, proto.GameSubState_SETTLEMENT_BEGIN)
+		t.BroadcastTableState(proto.TableState_SETTLEMENT)
 		log.Info("本轮结束 %s", t.tableId)
 	}
-	scheduler.NewAfterTimer(3*time.Second, func() {
-		t.BroadcastTableState(proto.GameState_SETTLEMENT, proto.GameSubState_SETTLEMENT_END)
-	})
 }
 
 func (t *Table) GetClient(s *session.Session) util.ClientEntity {
@@ -198,10 +167,10 @@ func (t *Table) Join(s *session.Session, tableId string) error {
 
 func (t *Table) CanDestory() bool {
 	switch t.state {
-	case proto.GameState_SETTLEMENT:
-	case proto.GameState_CANCEL:
+	case proto.TableState_SETTLEMENT:
+	case proto.TableState_CANCEL:
 		return true
-	case proto.GameState_WAITREADY:
+	case proto.TableState_WAITREADY:
 		// 1分钟了，还是这个状态，销毁之
 		if z.GetTime().Sub(t.begin) > time.Minute {
 			return true
@@ -223,6 +192,8 @@ func (t *Table) GetInfo() *proto.TableInfo {
 		TableId:    t.tableId,
 		TableState: t.state,
 		LoseTeams:  t.loseTeams,
+		Waiter:     t.waiter.GetInfo(),
+		CountDown:  t.countDown,
 	}
 }
 

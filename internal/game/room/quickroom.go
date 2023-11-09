@@ -98,6 +98,9 @@ func (r *QuickRoom) BackToQueue(sList []*session.Session) {
 	r.queue = append(r.queue, sList...)
 	for _, v := range sList {
 		log.Debug("BackToQueue %d", v.UID())
+		v.Push("onState", &proto.GameStateResp{
+			State: proto.GameState_WAIT,
+		})
 	}
 }
 
@@ -129,7 +132,7 @@ func (r *QuickRoom) Leave(s *session.Session) error {
 		entity.Leave(s)
 	}
 	util.RemoveRoom(s)
-	return s.Response(&proto.LeaveResp{})
+	return s.Response(&proto.LeaveResp{Code: proto.ErrorCode_OK})
 }
 
 func (r *QuickRoom) Join(s *session.Session) error {

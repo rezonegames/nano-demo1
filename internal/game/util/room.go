@@ -3,7 +3,6 @@ package util
 import (
 	"github.com/lonng/nano/session"
 	"tetris/config"
-	"tetris/models"
 	"tetris/proto/proto"
 )
 
@@ -23,7 +22,7 @@ type RoomEntity interface {
 type TableEntity interface {
 	AfterInit()
 	GetTableId() string
-	BroadcastTableState(state proto.GameState, subState proto.GameSubState)
+	BroadcastTableState(state proto.TableState)
 	UpdateState(s *session.Session, msg *proto.UpdateState) error
 	Clear()
 	Leave(s *session.Session)
@@ -40,6 +39,7 @@ type WaiterEntity interface {
 	Ready(s *session.Session) error
 	Leave(s *session.Session) error
 	CheckAndDismiss()
+	GetInfo() *proto.TableInfo_Waiter
 	AfterInit()
 }
 
@@ -48,6 +48,5 @@ type ClientEntity interface {
 	GetTeamId() int32
 	IsEnd() bool
 	Save(msg *proto.UpdateState)
-	GetProfile() *models.Profile
 	GetSession() *session.Session
 }

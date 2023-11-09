@@ -14,8 +14,7 @@ import (
 	"time"
 )
 
-func client(deviceId, rid string, wg sync.WaitGroup) {
-	defer wg.Done()
+func client(deviceId, rid string) {
 	ss := protobuf.NewSerializer()
 
 	url := "http://127.0.0.1:8000/v1/login"
@@ -66,6 +65,8 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 
 	uid := respMsg.UserId
 	state := proto2.GameState_IDLE
+	tableState := proto2.TableState_STATE_NONE
+
 	if uid == 0 {
 		c.Request("g.register", &proto2.RegisterGameReq{Name: deviceId, AccountId: aa.AccountId}, func(data interface{}) {
 			chLogin <- struct{}{}
@@ -85,13 +86,6 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 	}
 	<-chLogin
 
-	// 倒计时
-	c.On("onCountDown", func(data interface{}) {
-		v := proto2.CountDownResp{}
-		ss.Unmarshal(data.([]byte), &v)
-		fmt.Println(deviceId, "onCountDown", v.Counter)
-	})
-
 	// 状态变化
 	c.On("onState", func(data interface{}) {
 		v := proto2.GameStateResp{}
@@ -99,15 +93,27 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 		state = v.State
 		tableInfo := v.TableInfo
 
-		if v.TableInfo != nil {
-			for k, v := range tableInfo.Players {
-				if k == uid {
-					fmt.Println(deviceId, "teamId", v.TeamId)
-				}
+		if tableInfo != nil {
+
+			//WAITREADY = 1;
+			//  CANCEL = 2;
+			//  COUNTDOWN = 3;
+			//  GAMING = 4;
+			//  SETTLEMENT = 5;
+			tableState = tableInfo.TableState
+			switch tableInfo.TableState {
+			case proto2.TableState_WAITREADY:
+				fmt.Println(tableState, tableInfo.Waiter.CountDown, tableInfo.Waiter.Readys)
+			case proto2.TableState_COUNTDOWN:
+				fmt.Println(tableState, tableInfo.CountDown)
+
+			case proto2.TableState_SETTLEMENT:
+				fmt.Println(tableState, tableInfo.LoseTeams)
 			}
-			//tableId = tableInfo.TableId
+
+		} else {
+			fmt.Println(deviceId, "onState", v.State)
 		}
-		fmt.Println(deviceId, "onState", v.State, v.SubState)
 	})
 
 	c.On("onStateUpdate", func(data interface{}) {
@@ -116,7 +122,7 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 		fmt.Println(z.ToString(v))
 	})
 
-	ra := z.RandInt(1, 3)
+	ra := z.RandInt(1, 5)
 	ticker := time.NewTicker(time.Duration(ra) * time.Second)
 	defer ticker.Stop()
 
@@ -137,37 +143,40 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 					state = v.State
 					fmt.Println(deviceId, "join", state)
 				})
-			case proto2.GameState_WAITREADY:
-				c.Request("r.ready", &proto2.Ready{}, func(data interface{}) {
-					fmt.Println(deviceId, "ready")
-				})
+			case proto2.GameState_INGAME:
 
-			case proto2.GameState_GAMING:
-				m := make([]*proto2.Array, 0)
-				m = append(m, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 0}, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 1})
+				switch tableState {
+				case proto2.TableState_WAITREADY:
+					c.Request("r.ready", &proto2.Ready{}, func(data interface{}) {
+						fmt.Println(deviceId, "ready")
+					})
+				case proto2.TableState_GAMING:
+					m := make([]*proto2.Array, 0)
+					m = append(m, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 0}, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 1})
 
-				c.Request("r.updatestate", &proto2.UpdateState{
-					PlayerId: uid,
+					c.Request("r.updatestate", &proto2.UpdateState{
+						PlayerId: uid,
 
-					Fragment: "all",
-					Player: &proto2.Player{
-						Matrix: m,
-						Pos: &proto2.Pos{
-							X: 1,
-							Y: 2,
+						Fragment: "all",
+						Player: &proto2.Player{
+							Matrix: m,
+							Pos: &proto2.Pos{
+								X: 1,
+								Y: 2,
+							},
+							Score: 10,
 						},
-						Score: 10,
-					},
-
-					Arena: m,
-
-					End: true,
-					//Data: nil,
-				}, func(data interface{}) {
-					fmt.Println(deviceId, "syncmessage")
-				})
-			case proto2.GameState_SETTLEMENT:
-				state = proto2.GameState_IDLE
+						Arena: &proto2.Arena{Matrix: m},
+						End:   true,
+						//Data: nil,
+					}, func(data interface{}) {
+						fmt.Println(deviceId, "syncmessage")
+					})
+				case proto2.TableState_SETTLEMENT:
+					//state = proto2.GameState_IDLE
+					fmt.Println(deviceId, "本轮结束")
+					chEnd <- struct{}{}
+				}
 			}
 		default:
 
@@ -198,13 +207,17 @@ func client(deviceId, rid string, wg sync.WaitGroup) {
 
 func TestGame(t *testing.T) {
 
+	//
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 2; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
+		//
+		// 创建客户端
 		go func(index int) {
-			client(fmt.Sprintf("robot%d", index), "1", wg)
+			defer wg.Done()
+			client(fmt.Sprintf("robot%d", index), "1")
 		}(i)
 	}
 
