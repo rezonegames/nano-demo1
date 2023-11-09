@@ -21,7 +21,6 @@ message Profile {
   string name = 1;
   int32 coin = 2;
   int64 userId = 3;
-  int32 teamId = 4;
   int64 updatedAt = 10;
 }
 message LoginToGameResp {
