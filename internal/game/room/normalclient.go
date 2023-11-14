@@ -14,7 +14,6 @@ type NormalClient struct {
 	cs        *session.Session
 	profile   *models.Profile
 	updatedAt time.Time
-	robot     util.RobotEntity
 	id        int64
 	table     util.TableEntity
 }
@@ -33,62 +32,93 @@ func NewNormalClient(s *session.Session, teamId int32, table util.TableEntity) *
 				},
 			},
 			End:     false,
-			Score:   0,
 			Profile: util.ConvProfileToProtoProfile(p),
+			ResOK:   false,
 		},
 		cs:        s,
 		id:        s.UID(),
 		updatedAt: z.GetTime(),
 		table:     table,
 	}
-	c.robot = NewRobot(c, table)
+
 	return c
 }
 
 func (c *NormalClient) Save(msg *proto.UpdateState) {
-	//fragment := msg.Fragment
-	//log.Info("client save %s", fragment)
-
-	player, arena := msg.Player, msg.Arena
-
-	//
-	// piece区域
+	state := c.player.State
+	player, arena, end := msg.Player, msg.Arena, msg.End
 	if player != nil {
 		pos := player.Pos
 		score := player.Score
 		matrix := player.Matrix
-
-		cp := c.player.State.Player
 		if pos != nil {
-			cp.Pos = pos
+			state.Player.Pos = pos
 		}
 		if score != 0 {
-			cp.Score = score
+			state.Player.Score = score
 		}
 		if matrix != nil {
-			cp.Matrix = matrix
+			state.Player.Matrix = matrix
 		}
 	}
-
-	//
-	// 面板
 	if arena != nil {
-		c.player.State.Arena = arena
+		matrix := arena.Matrix
+		if matrix != nil {
+			state.Arena.Matrix = matrix
+		}
 	}
-
-	//
-	// 结束了
-	if msg.End {
+	if end {
 		c.player.End = true
 	}
-
-	//
-	// 记录最后更新时间
 	c.updatedAt = z.GetTime()
 }
 
 func (c *NormalClient) Update(t time.Time) {
-	c.robot.Update(c.updatedAt, t)
+	duration := t.Sub(c.updatedAt)
+
+	if duration > 100*time.Millisecond {
+		state := c.player.State
+		s := &proto.UpdateState{
+			Fragment: "all",
+			Player:   state.Player,
+			Arena:    state.Arena,
+			PlayerId: c.id,
+			End:      c.player.End,
+		}
+		if s.End {
+			return
+		}
+		//
+		// 如果刚上线就掉了， 初始化之
+		if s.Arena.Matrix == nil {
+			s.Arena.Matrix = fill0()
+			reset(s)
+		}
+
+		//
+		// 判断过了几秒，并且pos.y ++
+		nSeconds := int(duration.Milliseconds())
+		for i := 0; i < nSeconds; i += 100 {
+			s.Player.Pos.Y++
+			//
+			// 碰撞了，pos.y--
+			if collide(s) {
+				s.Player.Pos.Y--
+				merge(s)
+				reset(s)
+				//
+				// 如果结束了，就放弃循环
+				if s.End {
+					break
+				}
+			}
+		}
+
+		//
+		// 广播之
+		c.table.BroadcastPlayerState(c.id, s)
+	}
+
 }
 
 func (c *NormalClient) GetSession() *session.Session {

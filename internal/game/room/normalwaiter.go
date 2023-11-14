@@ -73,6 +73,7 @@ func (w *NormalWaiter) CheckAndDismiss() {
 		}
 		w.room.BackToQueue(bList)
 	} else {
+		w.table.ChangeState(proto.TableState_WAITREADY)
 		return
 	}
 	w.group.Close()
@@ -97,6 +98,7 @@ func (w *NormalWaiter) Ready(s *session.Session) error {
 		return s.Response(&proto.ReadyResp{Code: proto.ErrorCode_OK})
 	}
 	w.readys[uid] = z.NowUnix()
+	w.table.ChangeState(proto.TableState_WAITREADY)
 	return s.Response(&proto.ReadyResp{Code: proto.ErrorCode_OK})
 }
 

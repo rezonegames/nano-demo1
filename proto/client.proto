@@ -76,6 +76,7 @@ message LeaveResp {
   ErrorCode code = 1;
 }
 
+
 //
 // 在每一个步骤，下发游戏状态
 message GameStateResp {
@@ -133,9 +134,9 @@ message UpdateState {
   // arena
   Arena arena = 3;
   //
-  //
   int64 playerId = 4;
   bool end = 10;
+  bool resOK = 11;
 }
 
 //
@@ -147,18 +148,17 @@ message TableInfo {
     bool end = 3;
     int32 score = 4;
     Profile profile = 5;
+    bool resOK = 6;
   }
 
   message Waiter {
     map<int64, int64> readys = 4;
     int32 countDown = 6;
   }
-
-  map<int64, Player>  players = 1;
-  string tableId = 2;
-  TableState tableState = 3;
-  map<int32, int64>loseTeams = 5;
-  Waiter waiter = 6;
-  int32 countDown = 7;
-  Room room = 8;
+  string tableId = 1;
+  TableState tableState = 2;
+  map<int64, Player>  players = 3;
+  map<int32, int64>loseTeams = 4;
+  Waiter waiter = 5;
+  Room room = 6;
 }

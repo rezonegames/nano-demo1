@@ -28,7 +28,7 @@ enum TableState {
   STATE_NONE = 0;
   WAITREADY = 1;
   CANCEL = 2;
-  COUNTDOWN = 3;
+  CHECK_RES = 3;
   GAMING = 4;
   SETTLEMENT = 5;
 }

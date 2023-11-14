@@ -25,15 +25,16 @@ type TableEntity interface {
 	GetTableId() string
 	UpdateState(s *session.Session, msg *proto.UpdateState) error
 	BroadcastPlayerState(uid int64, msg *proto.UpdateState) error
-	Clear()
 	Leave(s *session.Session)
 	Join(s *session.Session, tableId string) error
 	Ready(s *session.Session) error
 	CanDestory() bool
+	Clear()
 	GetInfo() *proto.TableInfo
 	BackToTable()
 	Entity() (WaiterEntity, error)
 	GetClient(uid int64) ClientEntity
+	ChangeState(state proto.TableState)
 }
 
 type WaiterEntity interface {
@@ -52,8 +53,4 @@ type ClientEntity interface {
 	GetSession() *session.Session
 	GetId() int64
 	Update(t time.Time)
-}
-
-type RobotEntity interface {
-	Update(t1 time.Time, t2 time.Time) error
 }

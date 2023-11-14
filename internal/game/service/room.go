@@ -49,7 +49,7 @@ func (r *RoomService) Join(s *session.Session, msg *proto.Join) error {
 	return entity.Join(s)
 }
 
-func (r *RoomService) Ready(s *session.Session, msg *proto.Ready) error {
+func (r *RoomService) Ready(s *session.Session, _ *proto.Ready) error {
 	rid, err := util.GetRoomId(s)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (r *RoomService) Ready(s *session.Session, msg *proto.Ready) error {
 	return entity.Ready(s)
 }
 
-func (r *RoomService) Cancel(s *session.Session, msg *proto.Cancel) error {
+func (r *RoomService) Cancel(s *session.Session, _ *proto.Cancel) error {
 	rid, err := util.GetRoomId(s)
 	if err != nil {
 		return s.Response(&proto.CancelResp{Code: proto.ErrorCode_OK})

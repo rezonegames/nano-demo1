@@ -55,9 +55,3 @@ func NewRoom(conf *config.Room) util.RoomEntity {
 	r.AfterInit()
 	return r
 }
-
-func NewRobot(client util.ClientEntity, table util.TableEntity) util.RobotEntity {
-	var r util.RobotEntity
-	r = NewRobot1(client, table)
-	return r
-}

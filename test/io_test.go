@@ -105,8 +105,8 @@ func client(deviceId, rid string) {
 			switch tableInfo.TableState {
 			case proto2.TableState_WAITREADY:
 				fmt.Println(tableState, tableInfo.Waiter.CountDown, tableInfo.Waiter.Readys)
-			case proto2.TableState_COUNTDOWN:
-				fmt.Println(tableState, tableInfo.CountDown)
+			case proto2.TableState_CHECK_RES:
+				fmt.Println(tableState)
 
 			case proto2.TableState_SETTLEMENT:
 				fmt.Println(tableState, tableInfo.LoseTeams)
@@ -219,7 +219,7 @@ func TestGame(t *testing.T) {
 	//
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 2; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		//
