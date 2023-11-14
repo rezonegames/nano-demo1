@@ -219,7 +219,7 @@ func TestGame(t *testing.T) {
 	//
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		//

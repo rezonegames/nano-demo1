@@ -53,7 +53,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		room:          room,
 		begin:         z.GetTime(),
 		end:           make(chan bool, 0),
-		resCountDown:  2,
+		resCountDown:  5,
 	}
 
 	var teamId int32
@@ -86,6 +86,7 @@ func (t *Table) BackToTable() {
 			}
 		}
 		if b || t.resCountDown == 1 {
+			time.Sleep(2 * time.Second)
 			t.ChangeState(proto.TableState_GAMING)
 			break
 		}

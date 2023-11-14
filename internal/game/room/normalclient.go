@@ -70,13 +70,14 @@ func (c *NormalClient) Save(msg *proto.UpdateState) {
 	if end {
 		c.player.End = true
 	}
+	c.player.ResOK = msg.ResOK
 	c.updatedAt = z.GetTime()
 }
 
 func (c *NormalClient) Update(t time.Time) {
 	duration := t.Sub(c.updatedAt)
-
-	if duration > 100*time.Millisecond {
+	duration = 1 * time.Millisecond
+	if duration > time.Second {
 		state := c.player.State
 		s := &proto.UpdateState{
 			Fragment: "all",
@@ -97,8 +98,8 @@ func (c *NormalClient) Update(t time.Time) {
 
 		//
 		// 判断过了几秒，并且pos.y ++
-		nSeconds := int(duration.Milliseconds())
-		for i := 0; i < nSeconds; i += 100 {
+		nSeconds := int(duration.Seconds())
+		for i := 0; i < nSeconds; i += 1 {
 			s.Player.Pos.Y++
 			//
 			// 碰撞了，pos.y--
