@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/lonng/nano/benchmark/wsio"
 	"github.com/lonng/nano/serialize/protobuf"
@@ -116,13 +117,13 @@ func client(deviceId, rid string) {
 		}
 	})
 
-	c.On("onStateUpdate", func(data interface{}) {
+	c.On("onPlayerUpdate", func(data interface{}) {
 		v := proto2.UpdateState{}
 		ss.Unmarshal(data.([]byte), &v)
 		fmt.Println(z.ToString(v))
 	})
 
-	ra := z.RandInt(1, 5)
+	ra := z.RandInt(1, 2)
 	ticker := time.NewTicker(time.Duration(ra) * time.Second)
 	defer ticker.Stop()
 
@@ -151,31 +152,34 @@ func client(deviceId, rid string) {
 						fmt.Println(deviceId, "ready")
 					})
 				case proto2.TableState_GAMING:
-					m := make([]*proto2.Array, 0)
-					m = append(m, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 0}, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 1})
-
-					c.Request("r.updatestate", &proto2.UpdateState{
-						PlayerId: uid,
-
-						Fragment: "all",
-						Player: &proto2.Player{
-							Matrix: m,
-							Pos: &proto2.Pos{
-								X: 1,
-								Y: 2,
-							},
-							Score: 10,
-						},
-						Arena: &proto2.Arena{Matrix: m},
-						End:   true,
-						//Data: nil,
-					}, func(data interface{}) {
-						fmt.Println(deviceId, "syncmessage")
-					})
+					//a2 := &proto2.Array2{Rows: []*proto2.Row{
+					//	{Values: []int32{0, 0, 0, 0, 0}},
+					//	{Values: []int32{1, 2, 3, 4, 5}},
+					//	{Values: []int32{1, 2, 3, 4, 5}},
+					//}}
+					//
+					//c.Request("r.updatestate", &proto2.UpdateState{
+					//	PlayerId: uid,
+					//
+					//	Fragment: "all",
+					//	Player: &proto2.Player{
+					//		Matrix: a2,
+					//		Pos: &proto2.Pos{
+					//			X: 1,
+					//			Y: 2,
+					//		},
+					//		Score: 10,
+					//	},
+					//	Arena: &proto2.Arena{Matrix: a2},
+					//	End:   false,
+					//	//Data: nil,
+					//}, func(data interface{}) {
+					//	fmt.Println(deviceId, "syncmessage")
+					//})
 				case proto2.TableState_SETTLEMENT:
-					//state = proto2.GameState_IDLE
-					fmt.Println(deviceId, "本轮结束")
-					chEnd <- struct{}{}
+					state = proto2.GameState_IDLE
+					//fmt.Println(deviceId, "本轮结束")
+					//chEnd <- struct{}{}
 				}
 			}
 		default:
@@ -184,26 +188,31 @@ func client(deviceId, rid string) {
 	}
 }
 
-//func TestMatrix(t *testing.T) {
-//	//xx := `[[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0]]`
-//
-//	m := make([]*proto2.Array, 0)
-//	m = append(m, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 0}, &proto2.Array{V: append(make([]uint32, 0), 0, 1, 2, 3, 4, 5), I: 1})
-//
-//	us := proto2.UpdateState{
-//		Player: &proto2.Player{
-//			Matrix: m,
-//			Pos: &proto2.Pos{
-//				X: 1,
-//				Y: 2,
-//			},
-//			Score: 0,
-//		},
-//	}
-//
-//	//err := json.Unmarshal([]byte(uss), &us)
-//	fmt.Println(z.ToString(us))
-//}
+func TestMatrix1(t *testing.T) {
+	//xx := `[[1,2,3,4], [1,2,3,5]]`
+
+}
+
+func TestMatrix(t *testing.T) {
+	a2 := &proto2.Array2{Rows: []*proto2.Row{
+		{Values: []int32{0, 0, 0, 0, 0}},
+		{Values: []int32{1, 2, 3, 4, 5}},
+		{Values: []int32{1, 2, 3, 4, 6}},
+	}}
+	data, err := json.Marshal(a2)
+	if err != nil {
+		fmt.Println("matrix err", err)
+		return
+	}
+	fmt.Println(string(data))
+
+	a3 := &proto2.Array2{}
+	err = json.Unmarshal(data, a3)
+	if err != nil {
+		fmt.Println("unmarshal err", err)
+	}
+	fmt.Println(a3)
+}
 
 func TestGame(t *testing.T) {
 

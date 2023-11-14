@@ -9,9 +9,9 @@ import (
 )
 
 // NewWaiter 客户端类型，有可能是机器人，真人，以及结束方式可能不同，现在只有一种真人
-func NewClient(s *session.Session, teamId int32) util.ClientEntity {
+func NewClient(s *session.Session, teamId int32, table util.TableEntity) util.ClientEntity {
 	var c util.ClientEntity
-	c = NewNormalClient(s, teamId)
+	c = NewNormalClient(s, teamId, table)
 	return c
 }
 
@@ -53,5 +53,11 @@ func NewRoom(conf *config.Room) util.RoomEntity {
 		panic(fmt.Sprintf("NewRoom unknown type %s", conf.RoomType))
 	}
 	r.AfterInit()
+	return r
+}
+
+func NewRobot(client util.ClientEntity, table util.TableEntity) util.RobotEntity {
+	var r util.RobotEntity
+	r = NewRobot1(client, table)
 	return r
 }

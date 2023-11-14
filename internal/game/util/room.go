@@ -4,6 +4,7 @@ import (
 	"github.com/lonng/nano/session"
 	"tetris/config"
 	"tetris/proto/proto"
+	"time"
 )
 
 type RoomEntity interface {
@@ -22,8 +23,8 @@ type RoomEntity interface {
 type TableEntity interface {
 	AfterInit()
 	GetTableId() string
-	BroadcastTableState(state proto.TableState)
 	UpdateState(s *session.Session, msg *proto.UpdateState) error
+	BroadcastPlayerState(uid int64, msg *proto.UpdateState) error
 	Clear()
 	Leave(s *session.Session)
 	Join(s *session.Session, tableId string) error
@@ -32,7 +33,7 @@ type TableEntity interface {
 	GetInfo() *proto.TableInfo
 	BackToTable()
 	Entity() (WaiterEntity, error)
-	GetClient(s *session.Session) ClientEntity
+	GetClient(uid int64) ClientEntity
 }
 
 type WaiterEntity interface {
@@ -49,4 +50,10 @@ type ClientEntity interface {
 	IsEnd() bool
 	Save(msg *proto.UpdateState)
 	GetSession() *session.Session
+	GetId() int64
+	Update(t time.Time)
+}
+
+type RobotEntity interface {
+	Update(t1 time.Time, t2 time.Time) error
 }

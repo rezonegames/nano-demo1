@@ -22,12 +22,14 @@ type Table struct {
 	loseCount     int32
 	loseTeams     map[int32]int64
 	teamGroupSize int32
-	state         proto.TableState // 从countdown =》settlement 结束
 	lock          sync.RWMutex
 	waiter        util.WaiterEntity
 	room          util.RoomEntity
 	begin         time.Time
 	countDown     int32
+	chState       chan proto.TableState
+	state         proto.TableState
+	end           chan bool
 }
 
 func (t *Table) Entity() (util.WaiterEntity, error) {
@@ -45,7 +47,6 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		group:         nano.NewGroup(tableId),
 		tableId:       tableId,
 		clients:       make(map[int64]util.ClientEntity, 0),
-		state:         proto.TableState_STATE_NONE,
 		conf:          conf,
 		loseCount:     0,
 		loseTeams:     make(map[int32]int64, 0),
@@ -53,6 +54,8 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		room:          room,
 		begin:         z.GetTime(),
 		countDown:     3,
+		chState:       make(chan proto.TableState),
+		end:           make(chan bool, 0),
 	}
 
 	var teamId int32
@@ -61,7 +64,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		if i > 0 && int32(i)%t.conf.Divide == 0 {
 			teamId++
 		}
-		c := NewClient(v, teamId)
+		c := NewClient(v, teamId, t)
 		t.clients[uid] = c
 		t.Join(v, t.GetTableId())
 
@@ -69,9 +72,6 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 	}
 	log.Info("newTable start %s", tableId)
 	t.waiter = NewWaiter(sList, room, t)
-
-	t.BroadcastTableState(proto.TableState_WAITREADY)
-
 	return t
 }
 
@@ -79,30 +79,55 @@ func (t *Table) BackToTable() {
 	for t.countDown > 0 {
 		time.Sleep(time.Second)
 		t.countDown--
-		t.BroadcastTableState(proto.TableState_COUNTDOWN)
+		t.chState <- proto.TableState_COUNTDOWN
 	}
 	//
 	// 倒计时结束开始游戏
-	t.BroadcastTableState(proto.TableState_GAMING)
+	t.chState <- proto.TableState_GAMING
 }
 
 func (t *Table) AfterInit() {
-
+	go t.Run()
+	time.Sleep(500 * time.Millisecond)
+	t.chState <- proto.TableState_WAITREADY
 }
 
-func (t *Table) BroadcastTableState(state proto.TableState) {
-	t.state = state
-	var roomList []*proto.Room
-	switch t.state {
-	case proto.TableState_SETTLEMENT:
-		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms)
-		break
+func (t *Table) Run() {
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-t.end:
+			t.group.Close()
+			for _, v := range t.clients {
+				util.RemoveTable(v.GetSession())
+			}
+			return
+
+		case t1 := <-ticker.C:
+			if t.state == proto.TableState_GAMING {
+				for _, v := range t.clients {
+					v.Update(t1)
+				}
+			}
+			break
+
+		case s := <-t.chState:
+			t.state = s
+			var roomList []*proto.Room
+			switch s {
+			case proto.TableState_SETTLEMENT:
+				roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms...)
+				break
+			}
+			t.group.Broadcast("onState", &proto.GameStateResp{
+				State:     proto.GameState_INGAME,
+				TableInfo: t.GetInfo(),
+				RoomList:  roomList,
+			})
+
+		}
 	}
-	t.group.Broadcast("onState", &proto.GameStateResp{
-		State:     proto.GameState_INGAME,
-		TableInfo: t.GetInfo(),
-		RoomList:  roomList,
-	})
 }
 
 func (t *Table) ClientEnd(teamId int32) {
@@ -117,42 +142,47 @@ func (t *Table) ClientEnd(teamId int32) {
 			}
 		}
 	}
+	//
 	// onTeamLose
 	if isTeamLose {
 		t.loseCount++
 		t.loseTeams[teamId] = z.NowUnix()
-		t.BroadcastTableState(proto.TableState_GAMING)
+		t.chState <- proto.TableState_GAMING
 		log.Info("队伍 %d 结束", teamId)
 	}
 
 	if t.loseCount >= t.teamGroupSize-1 {
-		t.BroadcastTableState(proto.TableState_SETTLEMENT)
+		t.chState <- proto.TableState_SETTLEMENT
 		log.Info("本轮结束 %s", t.tableId)
 	}
 }
 
-func (t *Table) GetClient(s *session.Session) util.ClientEntity {
-	return t.clients[s.UID()]
+func (t *Table) GetClient(uid int64) util.ClientEntity {
+	return t.clients[uid]
 }
 
 func (t *Table) UpdateState(s *session.Session, msg *proto.UpdateState) error {
 	// Sync message to all members in this room
 	uid := s.UID()
-	c := t.GetClient(s)
-	c.Save(msg)
-	teamId := c.GetTeamId()
-	log.Info("updateState %d %d %v", uid, teamId, z.ToString(msg))
-	if c.IsEnd() {
-		t.ClientEnd(teamId)
+	return t.BroadcastPlayerState(uid, msg)
+}
+
+func (t *Table) BroadcastPlayerState(uid int64, msg *proto.UpdateState) error {
+	if c := t.GetClient(uid); c.IsEnd() {
+		return nil
+	} else {
+		c.Save(msg)
+		teamId := c.GetTeamId()
+		log.Info("updateState %d %d %v", uid, teamId, z.ToString(msg))
+		if c.IsEnd() {
+			t.ClientEnd(teamId)
+		}
+		return t.group.Broadcast("onPlayerUpdate", msg)
 	}
-	return t.group.Broadcast("onStateUpdate", msg)
 }
 
 func (t *Table) Clear() {
-	t.group.Close()
-	for _, v := range t.clients {
-		util.RemoveTable(v.GetSession())
-	}
+	t.end <- true
 }
 
 func (t *Table) Leave(s *session.Session) {
@@ -187,6 +217,7 @@ func (t *Table) GetInfo() *proto.TableInfo {
 	for k, v := range t.clients {
 		players[k] = v.GetPlayer()
 	}
+	rooms := util.ConvRoomListToProtoRoomList(t.room.GetConfig())
 	return &proto.TableInfo{
 		Players:    players,
 		TableId:    t.tableId,
@@ -194,6 +225,7 @@ func (t *Table) GetInfo() *proto.TableInfo {
 		LoseTeams:  t.loseTeams,
 		Waiter:     t.waiter.GetInfo(),
 		CountDown:  t.countDown,
+		Room:       rooms[0],
 	}
 }
 

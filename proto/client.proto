@@ -86,10 +86,13 @@ message GameStateResp {
   repeated Room roomList = 6;
 }
 
-// TwoArray 二维数组[1:[0,0],2:[0,0]]
-message Array {
-  repeated uint32 v = 1;
-  int32 i = 2;
+// TwoArray 二维数组[[0,0],[0,0]]
+message Row {
+  repeated int32 values = 1;
+}
+
+message Array2 {
+  repeated Row rows = 1;
 }
 
 //Pos 坐标
@@ -101,7 +104,7 @@ message Pos {
 //
 // 玩家数据
 message Player {
-  repeated Array matrix = 1;
+  Array2 matrix = 1;
   Pos pos = 2;
   uint32 score = 3;
 }
@@ -109,7 +112,7 @@ message Player {
 //
 // 区域数据
 message Arena {
-  repeated Array matrix = 1;
+  Array2 matrix = 1;
 }
 
 message State {
@@ -157,4 +160,5 @@ message TableInfo {
   map<int32, int64>loseTeams = 5;
   Waiter waiter = 6;
   int32 countDown = 7;
+  Room room = 8;
 }

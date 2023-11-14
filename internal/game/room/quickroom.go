@@ -59,10 +59,12 @@ func (r *QuickRoom) AfterInit() {
 		}
 	}
 
+	//
 	// 处理桌子的清理
 	clear := func() {
 		for k, v := range r.tables {
 			if v.CanDestory() {
+				v.Clear()
 				delete(r.tables, k)
 				log.Info("clear table %s", k)
 			}

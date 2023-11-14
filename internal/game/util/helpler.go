@@ -16,7 +16,7 @@ func ConvProfileToProtoProfile(pp *models.Profile) *proto.Profile {
 	}
 }
 
-func ConvRoomListToProtoRoomList(rl []*config.Room) []*proto.Room {
+func ConvRoomListToProtoRoomList(rl ...*config.Room) []*proto.Room {
 	mm := make([]*proto.Room, 0)
 	for _, v := range rl {
 		mm = append(mm, &proto.Room{
