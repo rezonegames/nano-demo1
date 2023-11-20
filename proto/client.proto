@@ -4,8 +4,6 @@ import "consts.proto";
 package proto;
 option go_package = "/proto";
 
-// gate服务
-
 message Ping {
 }
 
@@ -25,7 +23,7 @@ message Profile {
 }
 message LoginToGameResp {
   ErrorCode code = 1;
-  Profile player = 2;
+  Profile profile = 2;
   repeated Room roomList = 3;
   string roomId = 4;
   string tableId = 5;
@@ -48,8 +46,6 @@ message GetRoomListResp {
   repeated Room roomList = 2;
 }
 
-//
-// game服务
 message Join {
   string roomId = 1;
 }
@@ -76,8 +72,6 @@ message LeaveResp {
   ErrorCode code = 1;
 }
 
-
-//
 // 在每一个步骤，下发游戏状态
 message GameStateResp {
   ErrorCode code = 1;
@@ -87,78 +81,57 @@ message GameStateResp {
   repeated Room roomList = 6;
 }
 
-// TwoArray 二维数组[[0,0],[0,0]]
-message Row {
-  repeated int32 values = 1;
+
+message Action {
+  ActionType key = 1;
+  int32 val = 2;
 }
 
-message Array2 {
-  repeated Row rows = 1;
+message UpdateFrame {
+  repeated Action actionList = 2;
 }
 
-//Pos 坐标
-message Pos {
-  uint32 x = 1;
-  uint32 y = 2;
+message OnFrame {
+  message Player {
+    int64 userId = 1;
+    repeated Action actionList = 2;
+  }
+
+  int64 frameId = 1;
+  repeated Player playerList = 2;
 }
 
-//
-// 玩家数据
-message Player {
-  Array2 matrix = 1;
-  Pos pos = 2;
-  uint32 score = 3;
-}
-
-//
-// 区域数据
-message Arena {
-  Array2 matrix = 1;
-}
-
-message State {
-  Arena arena = 1;
-  Player player = 2;
-}
-
-//
-// UpdateState 玩家上传数据，包括arena数据和player数据
-message UpdateState {
-  //
-  // arena|player
-  string fragment = 1;
-  //
-  // pos|matrix|score
-  Player player = 2;
-  //
-  // arena
-  Arena arena = 3;
-  //
-  int64 playerId = 4;
-  bool end = 10;
-  bool resOK = 11;
-}
-
-//
 // 下发桌子信息
 message TableInfo {
+
+  message Frame {
+    int64 frameId = 1;
+    repeated Action actionList = 2;
+  }
+
   message Player {
     int32 teamId = 1;
-    State state = 2;
-    bool end = 3;
-    int32 score = 4;
-    Profile profile = 5;
-    bool resOK = 6;
+    bool end = 2;
+    int32 score = 3;
+    Profile profile = 4;
+    bool resOK = 5;
+    repeated Frame frameList = 6;
   }
 
   message Waiter {
-    map<int64, int64> readys = 4;
-    int32 countDown = 6;
+    map<int64, int64> readys = 1;
+    int32 countDown = 2;
   }
+
   string tableId = 1;
   TableState tableState = 2;
+
   map<int64, Player>  players = 3;
   map<int32, int64>loseTeams = 4;
   Waiter waiter = 5;
   Room room = 6;
+  // 随机种子
+  int64 randSeed = 7;
+  // 当前的帧号
+  int64 nextFrameId = 8;
 }

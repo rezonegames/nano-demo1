@@ -74,7 +74,7 @@ func (g *GateService) Register(s *session.Session, req *proto.RegisterGameReq) e
 		return err
 	}
 	return s.Response(&proto.LoginToGameResp{
-		Player:   util.ConvProfileToProtoProfile(p),
+		Profile:  util.ConvProfileToProtoProfile(p),
 		RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms...),
 	})
 }
@@ -87,7 +87,7 @@ func (g *GateService) Login(s *session.Session, req *proto.LoginToGame) error {
 	}
 	rid, _ := util.GetRoomId(s)
 	return s.Response(&proto.LoginToGameResp{
-		Player:   util.ConvProfileToProtoProfile(p),
+		Profile:  util.ConvProfileToProtoProfile(p),
 		RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms...),
 		RoomId:   rid,
 	})

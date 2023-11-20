@@ -2,7 +2,6 @@ package test
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/lonng/nano/benchmark/wsio"
 	"github.com/lonng/nano/serialize/protobuf"
@@ -75,14 +74,14 @@ func client(deviceId, rid string) {
 			v := proto2.LoginToGameResp{}
 			ss.Unmarshal(data.([]byte), &v)
 			ss.Unmarshal(data.([]byte), &v)
-			fmt.Println(deviceId, "register", v.Player.Name, v.Player.UserId, v.Player.Coin)
+			fmt.Println(deviceId, "register", v)
 		})
 	} else {
 		c.Request("g.login", &proto2.LoginToGame{UserId: uid}, func(data interface{}) {
 			chLogin <- struct{}{}
 			v := proto2.LoginToGameResp{}
 			ss.Unmarshal(data.([]byte), &v)
-			fmt.Println(deviceId, "login", v.Player.Name, v.Player.UserId, v.Player.Coin)
+			fmt.Println(deviceId, "login", v)
 		})
 	}
 	<-chLogin
@@ -96,11 +95,6 @@ func client(deviceId, rid string) {
 
 		if tableInfo != nil {
 
-			//WAITREADY = 1;
-			//  CANCEL = 2;
-			//  COUNTDOWN = 3;
-			//  GAMING = 4;
-			//  SETTLEMENT = 5;
 			tableState = tableInfo.TableState
 			switch tableInfo.TableState {
 			case proto2.TableState_WAITREADY:
@@ -117,8 +111,8 @@ func client(deviceId, rid string) {
 		}
 	})
 
-	c.On("onPlayerUpdate", func(data interface{}) {
-		v := proto2.UpdateState{}
+	c.On("onFrame", func(data interface{}) {
+		v := proto2.OnFrame{}
 		ss.Unmarshal(data.([]byte), &v)
 		fmt.Println(z.ToString(v))
 	})
@@ -152,30 +146,7 @@ func client(deviceId, rid string) {
 						fmt.Println(deviceId, "ready")
 					})
 				case proto2.TableState_GAMING:
-					//a2 := &proto2.Array2{Rows: []*proto2.Row{
-					//	{Values: []int32{0, 0, 0, 0, 0}},
-					//	{Values: []int32{1, 2, 3, 4, 5}},
-					//	{Values: []int32{1, 2, 3, 4, 5}},
-					//}}
-					//
-					//c.Request("r.updatestate", &proto2.UpdateState{
-					//	PlayerId: uid,
-					//
-					//	Fragment: "all",
-					//	Player: &proto2.Player{
-					//		Matrix: a2,
-					//		Pos: &proto2.Pos{
-					//			X: 1,
-					//			Y: 2,
-					//		},
-					//		Score: 10,
-					//	},
-					//	Arena: &proto2.Arena{Matrix: a2},
-					//	End:   false,
-					//	//Data: nil,
-					//}, func(data interface{}) {
-					//	fmt.Println(deviceId, "syncmessage")
-					//})
+
 				case proto2.TableState_SETTLEMENT:
 					state = proto2.GameState_IDLE
 					//fmt.Println(deviceId, "本轮结束")
@@ -188,38 +159,12 @@ func client(deviceId, rid string) {
 	}
 }
 
-func TestMatrix1(t *testing.T) {
-	//xx := `[[1,2,3,4], [1,2,3,5]]`
-
-}
-
-func TestMatrix(t *testing.T) {
-	a2 := &proto2.Array2{Rows: []*proto2.Row{
-		{Values: []int32{0, 0, 0, 0, 0}},
-		{Values: []int32{1, 2, 3, 4, 5}},
-		{Values: []int32{1, 2, 3, 4, 6}},
-	}}
-	data, err := json.Marshal(a2)
-	if err != nil {
-		fmt.Println("matrix err", err)
-		return
-	}
-	fmt.Println(string(data))
-
-	a3 := &proto2.Array2{}
-	err = json.Unmarshal(data, a3)
-	if err != nil {
-		fmt.Println("unmarshal err", err)
-	}
-	fmt.Println(a3)
-}
-
 func TestGame(t *testing.T) {
 
 	//
 	// wait server startup
 	wg := sync.WaitGroup{}
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 2; i++ {
 		wg.Add(1)
 		time.Sleep(50 * time.Millisecond)
 		//

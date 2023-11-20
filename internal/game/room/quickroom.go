@@ -155,12 +155,12 @@ func (r *QuickRoom) Join(s *session.Session) error {
 	})
 }
 
-func (r *QuickRoom) UpdateState(s *session.Session, msg *proto.UpdateState) error {
+func (r *QuickRoom) Update(s *session.Session, msg *proto.UpdateFrame) error {
 	entity, err := util.GetTable(s, r)
 	if err != nil {
 		return err
 	}
-	return entity.UpdateState(s, msg)
+	return entity.Update(s, msg)
 }
 
 func (r *QuickRoom) ResumeTable(s *session.Session) error {

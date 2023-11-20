@@ -73,7 +73,7 @@ func (r *RoomService) Cancel(s *session.Session, _ *proto.Cancel) error {
 	return entity.Leave(s)
 }
 
-func (r *RoomService) UpdateState(s *session.Session, msg *proto.UpdateState) error {
+func (r *RoomService) Update(s *session.Session, msg *proto.UpdateFrame) error {
 	rid, err := util.GetRoomId(s)
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func (r *RoomService) UpdateState(s *session.Session, msg *proto.UpdateState) er
 	if err != nil {
 		return err
 	}
-	return entity.UpdateState(s, msg)
+	return entity.Update(s, msg)
 }
 
 func (r *RoomService) ResumeTable(s *session.Session, msg *proto.Join) error {

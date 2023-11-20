@@ -44,3 +44,12 @@ enum TableType {
   NORMAL = 1;
   HAPPY = 2;
 }
+
+enum ActionType {
+  ACTIONTYPE_NONE = 0;
+  MOVE = 1;
+  ROTATE = 2;
+  DROP = 3;
+  QUICK_DROP = 4;
+  END = 5;
+}

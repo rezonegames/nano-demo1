@@ -4,14 +4,13 @@ import (
 	"github.com/lonng/nano/session"
 	"tetris/config"
 	"tetris/proto/proto"
-	"time"
 )
 
 type RoomEntity interface {
 	AfterInit()
 	Leave(s *session.Session) error
 	Join(s *session.Session) error
-	UpdateState(s *session.Session, msg *proto.UpdateState) error
+	Update(s *session.Session, msg *proto.UpdateFrame) error
 	ResumeTable(s *session.Session) error
 	GetConfig() *config.Room
 	CreateTable(sList []*session.Session)
@@ -23,8 +22,7 @@ type RoomEntity interface {
 type TableEntity interface {
 	AfterInit()
 	GetTableId() string
-	UpdateState(s *session.Session, msg *proto.UpdateState) error
-	BroadcastPlayerState(uid int64, msg *proto.UpdateState) error
+	Update(s *session.Session, msg *proto.UpdateFrame) error
 	Leave(s *session.Session)
 	Join(s *session.Session, tableId string) error
 	Ready(s *session.Session) error
@@ -49,8 +47,8 @@ type ClientEntity interface {
 	GetPlayer() *proto.TableInfo_Player
 	GetTeamId() int32
 	IsEnd() bool
-	Save(msg *proto.UpdateState)
+	SaveFrame(frameId int64, msg *proto.UpdateFrame)
+	GetFrame(frameId int64) []*proto.Action
 	GetSession() *session.Session
 	GetId() int64
-	Update(t time.Time)
 }

@@ -29,6 +29,8 @@ type Table struct {
 	state         proto.TableState
 	end           chan bool
 	resCountDown  int
+	nextFrameId   int64
+	randSeed      int64
 }
 
 func (t *Table) Entity() (util.WaiterEntity, error) {
@@ -41,7 +43,8 @@ func (t *Table) Ready(s *session.Session) error {
 
 func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 	conf := room.GetConfig()
-	tableId := fmt.Sprintf("%s:%d", conf.RoomId, z.NowUnixMilli())
+	now := z.NowUnixMilli()
+	tableId := fmt.Sprintf("%s:%d", conf.RoomId, now)
 	t := &Table{
 		group:         nano.NewGroup(tableId),
 		tableId:       tableId,
@@ -54,6 +57,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		begin:         z.GetTime(),
 		end:           make(chan bool, 0),
 		resCountDown:  5,
+		randSeed:      now,
 	}
 
 	var teamId int32
@@ -100,7 +104,7 @@ func (t *Table) AfterInit() {
 }
 
 func (t *Table) Run() {
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
@@ -112,12 +116,22 @@ func (t *Table) Run() {
 			}
 			return
 
-		case t1 := <-ticker.C:
+		case <-ticker.C:
 			switch t.state {
 			case proto.TableState_GAMING:
-				for _, v := range t.clients {
-					v.Update(t1)
+				msg := &proto.OnFrame{
+					FrameId:    t.nextFrameId,
+					PlayerList: make([]*proto.OnFrame_Player, 0),
 				}
+				for _, v := range t.clients {
+					al := v.GetFrame(t.nextFrameId)
+					msg.PlayerList = append(msg.PlayerList, &proto.OnFrame_Player{
+						UserId:     v.GetId(),
+						ActionList: al,
+					})
+				}
+				t.nextFrameId++
+				t.group.Broadcast("onFrame", msg)
 			}
 			break
 		}
@@ -139,52 +153,42 @@ func (t *Table) ChangeState(state proto.TableState) {
 	})
 }
 
-func (t *Table) ClientEnd(teamId int32) {
-	isTeamLose := true
-	for _, v := range t.clients {
-		if v.GetTeamId() == teamId {
-			if !v.IsEnd() {
-				isTeamLose = false
-			}
-		}
-	}
-	//
-	// onTeamLose
-	if isTeamLose {
-		t.loseCount++
-		t.loseTeams[teamId] = z.NowUnix()
-		t.ChangeState(proto.TableState_GAMING)
-		log.Info("队伍 %d 结束", teamId)
-	}
-
-	if t.loseCount >= t.teamGroupSize-1 {
-		t.ChangeState(proto.TableState_SETTLEMENT)
-		log.Info("本轮结束 %s", t.tableId)
-	}
-}
-
 func (t *Table) GetClient(uid int64) util.ClientEntity {
 	return t.clients[uid]
 }
 
-func (t *Table) UpdateState(s *session.Session, msg *proto.UpdateState) error {
-	// Sync message to all members in this room
-	uid := s.UID()
-	return t.BroadcastPlayerState(uid, msg)
-}
-
-func (t *Table) BroadcastPlayerState(uid int64, msg *proto.UpdateState) error {
-	if c := t.GetClient(uid); c.IsEnd() || t.state == proto.TableState_SETTLEMENT {
+func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {
+	c := t.GetClient(s.UID())
+	if c.IsEnd() || t.state == proto.TableState_SETTLEMENT {
 		return nil
-	} else {
-		c.Save(msg)
-		teamId := c.GetTeamId()
-		log.Info("updateState %d %d %v", uid, teamId, z.ToString(msg))
-		if c.IsEnd() {
-			t.ClientEnd(teamId)
-		}
-		return t.group.Broadcast("onPlayerUpdate", msg)
 	}
+	c.SaveFrame(t.nextFrameId, msg)
+
+	// 如果已经结束了，判断输赢
+	if c.IsEnd() {
+		isTeamLose := true
+		teamId := c.GetTeamId()
+		for _, v := range t.clients {
+			if v.GetTeamId() == teamId {
+				if !v.IsEnd() {
+					isTeamLose = false
+				}
+			}
+		}
+		// onTeamLose
+		if isTeamLose {
+			t.loseCount++
+			t.loseTeams[teamId] = z.NowUnix()
+			t.ChangeState(proto.TableState_GAMING)
+			log.Info("队伍 %d 结束", teamId)
+		}
+
+		if t.loseCount >= t.teamGroupSize-1 {
+			t.ChangeState(proto.TableState_SETTLEMENT)
+			log.Info("本轮结束 %s", t.tableId)
+		}
+	}
+	return nil
 }
 
 func (t *Table) Clear() {
@@ -226,12 +230,14 @@ func (t *Table) GetInfo() *proto.TableInfo {
 	}
 	rooms := util.ConvRoomListToProtoRoomList(t.room.GetConfig())
 	return &proto.TableInfo{
-		Players:    players,
-		TableId:    t.tableId,
-		TableState: t.state,
-		LoseTeams:  t.loseTeams,
-		Waiter:     t.waiter.GetInfo(),
-		Room:       rooms[0],
+		Players:     players,
+		TableId:     t.tableId,
+		TableState:  t.state,
+		LoseTeams:   t.loseTeams,
+		Waiter:      t.waiter.GetInfo(),
+		Room:        rooms[0],
+		NextFrameId: t.nextFrameId,
+		RandSeed:    t.randSeed,
 	}
 }
 

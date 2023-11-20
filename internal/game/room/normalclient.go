@@ -2,124 +2,83 @@ package room
 
 import (
 	"github.com/lonng/nano/session"
+	"sync"
 	"tetris/internal/game/util"
-	"tetris/models"
 	"tetris/pkg/z"
 	"tetris/proto/proto"
 	"time"
 )
 
 type NormalClient struct {
-	player    *proto.TableInfo_Player
-	cs        *session.Session
-	profile   *models.Profile
-	updatedAt time.Time
-	id        int64
-	table     util.TableEntity
+	player       *proto.TableInfo_Player
+	cs           *session.Session
+	lastUpdateAt time.Time
+	table        util.TableEntity
+	frames       map[int64]*proto.UpdateFrame
+	lock         sync.RWMutex //锁，用于存帧
 }
 
 func NewNormalClient(s *session.Session, teamId int32, table util.TableEntity) *NormalClient {
 	p, _ := util.GetProfile(s)
 	c := &NormalClient{
 		player: &proto.TableInfo_Player{
-			TeamId: teamId,
-			State: &proto.State{
-				Arena: &proto.Arena{Matrix: nil},
-				Player: &proto.Player{
-					Matrix: nil,
-					Pos:    nil,
-					Score:  0,
-				},
-			},
-			End:     false,
-			Profile: util.ConvProfileToProtoProfile(p),
-			ResOK:   false,
+			TeamId:    teamId,
+			FrameList: make([]*proto.TableInfo_Frame, 0),
+			End:       false,
+			Profile:   util.ConvProfileToProtoProfile(p),
+			ResOK:     false,
 		},
-		cs:        s,
-		id:        s.UID(),
-		updatedAt: z.GetTime(),
-		table:     table,
+		cs: s,
+		//updatedAt: z.GetTime(),
+		table:  table,
+		frames: make(map[int64]*proto.UpdateFrame, 0),
 	}
 
 	return c
 }
 
-func (c *NormalClient) Save(msg *proto.UpdateState) {
-	state := c.player.State
-	player, arena, end := msg.Player, msg.Arena, msg.End
-	if player != nil {
-		pos := player.Pos
-		score := player.Score
-		matrix := player.Matrix
-		if pos != nil {
-			state.Player.Pos = pos
-		}
-		if score != 0 {
-			state.Player.Score = score
-		}
-		if matrix != nil {
-			state.Player.Matrix = matrix
+func (c *NormalClient) SaveFrame(frameId int64, msg *proto.UpdateFrame) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	// 判断游戏是否结束，打一个标记
+	for _, a := range msg.ActionList {
+		if a.Key == proto.ActionType_END {
+			c.player.End = true
+			break
 		}
 	}
-	if arena != nil {
-		matrix := arena.Matrix
-		if matrix != nil {
-			state.Arena.Matrix = matrix
-		}
+	if uf, ok := c.frames[frameId]; ok {
+		uf.ActionList = append(uf.ActionList, msg.ActionList...)
+	} else {
+		uf.ActionList = msg.ActionList
 	}
-	if end {
-		c.player.End = true
-	}
-	c.player.ResOK = msg.ResOK
-	c.updatedAt = z.GetTime()
+	c.lastUpdateAt = z.GetTime()
 }
 
-func (c *NormalClient) Update(t time.Time) {
-	duration := t.Sub(c.updatedAt)
-	duration = 1 * time.Millisecond
-	if duration > time.Second {
-		state := c.player.State
-		s := &proto.UpdateState{
-			Fragment: "all",
-			Player:   state.Player,
-			Arena:    state.Arena,
-			PlayerId: c.id,
-			End:      c.player.End,
-		}
-		if s.End {
-			return
-		}
-		//
-		// 如果刚上线就掉了， 初始化之
-		if s.Arena.Matrix == nil {
-			s.Arena.Matrix = fill0()
-			reset(s)
-		}
+func (c *NormalClient) GetFrame(frameId int64) []*proto.Action {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 
-		//
-		// 判断过了几秒，并且pos.y ++
-		nSeconds := int(duration.Seconds())
-		for i := 0; i < nSeconds; i += 1 {
-			s.Player.Pos.Y++
-			//
-			// 碰撞了，pos.y--
-			if collide(s) {
-				s.Player.Pos.Y--
-				merge(s)
-				reset(s)
-				//
-				// 如果结束了，就放弃循环
-				if s.End {
-					break
-				}
+	al := make([]*proto.Action, 0)
+	uf, ok := c.frames[frameId]
+	if ok {
+		al = uf.ActionList
+	} else {
+
+		// 没结束，并且玩家这一帧没有操作，服务器主动加一帧
+		if !c.player.End {
+			if z.GetTime().Sub(c.lastUpdateAt) >= time.Second {
+				al = append(al, &proto.Action{
+					Key: proto.ActionType_DROP,
+					Val: 1,
+				})
+				c.frames[frameId] = &proto.UpdateFrame{ActionList: al}
+				c.lastUpdateAt = z.GetTime()
 			}
 		}
-
-		//
-		// 广播之
-		c.table.BroadcastPlayerState(c.id, s)
 	}
-
+	return al
 }
 
 func (c *NormalClient) GetSession() *session.Session {
@@ -127,7 +86,7 @@ func (c *NormalClient) GetSession() *session.Session {
 }
 
 func (c *NormalClient) GetId() int64 {
-	return c.id
+	return c.player.Profile.UserId
 }
 
 func (c *NormalClient) GetPlayer() *proto.TableInfo_Player {
