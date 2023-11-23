@@ -78,6 +78,7 @@ func QueryHandler(c *gin.Context) {
 		})
 	}
 	resp := &proto.AccountLoginResp{
+		Code:   proto.ErrorCode_OK,
 		UserId: userId,
 		Addr:   fmt.Sprintf("%s%s", ip, sc.Addr),
 		Name:   name,

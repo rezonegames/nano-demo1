@@ -88,7 +88,7 @@ message Action {
 }
 
 message UpdateFrame {
-  repeated Action actionList = 2;
+  Action action = 1;
 }
 
 message OnFrame {

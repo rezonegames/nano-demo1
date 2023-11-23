@@ -50,6 +50,9 @@ enum ActionType {
   MOVE = 1;
   ROTATE = 2;
   DROP = 3;
+  //  快速下降
   QUICK_DROP = 4;
-  END = 5;
+  //  道具
+  ITEM_USE = 5;
+  END = 100;
 }
