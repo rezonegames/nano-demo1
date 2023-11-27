@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
+	random "math/rand"
 	"os"
 	"sync"
 	"tetris/config"
@@ -10,6 +11,7 @@ import (
 	"tetris/internal/web"
 	"tetris/models"
 	"tetris/pkg/log"
+	"tetris/pkg/z"
 )
 
 func main() {
@@ -23,6 +25,7 @@ func main() {
 }
 
 func serve(ctx *cli.Context) error {
+	random.Seed(z.NowUnixMilli())
 	ctx1 := context.Background()
 	log.InitLog()
 	config.InitServerConfig()

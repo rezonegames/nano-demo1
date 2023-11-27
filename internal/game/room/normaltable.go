@@ -28,9 +28,11 @@ type Table struct {
 	begin         time.Time
 	state         proto.TableState
 	end           chan bool
-	resCountDown  int
 	nextFrameId   int64
 	randSeed      int64
+	pieceList     []int32
+	resCountDown  int32 // 检查资源是否加载成功
+	res           map[int64]int32
 }
 
 func (t *Table) Entity() (util.WaiterEntity, error) {
@@ -56,8 +58,14 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		room:          room,
 		begin:         z.GetTime(),
 		end:           make(chan bool, 0),
-		resCountDown:  5,
+		resCountDown:  10,
 		randSeed:      now,
+		pieceList:     make([]int32, 0),
+		res:           make(map[int64]int32, 0),
+	}
+
+	for i := 0; i < 500; i++ {
+		t.pieceList = append(t.pieceList, z.RandInt32(0, 6))
 	}
 
 	var teamId int32
@@ -83,9 +91,8 @@ func (t *Table) BackToTable() {
 	for t.resCountDown > 0 {
 		t.ChangeState(proto.TableState_CHECK_RES)
 		b := true
-		for _, v := range t.clients {
-			p := v.GetPlayer()
-			if !p.ResOK {
+		for id, _ := range t.clients {
+			if t.res[id] != 100 {
 				b = false
 			}
 		}
@@ -123,15 +130,28 @@ func (t *Table) Run() {
 					FrameId:    t.nextFrameId,
 					PlayerList: make([]*proto.OnFrame_Player, 0),
 				}
-				for _, v := range t.clients {
-					al := v.GetFrame(t.nextFrameId)
-					msg.PlayerList = append(msg.PlayerList, &proto.OnFrame_Player{
-						UserId:     v.GetId(),
-						ActionList: al,
-					})
+
+				bSend := false
+				if t.nextFrameId == 0 {
+					bSend = true
+					msg.PieceList = t.pieceList
+				} else {
+					for _, v := range t.clients {
+						al := v.GetFrame(t.nextFrameId)
+						if len(al) > 0 {
+							msg.PlayerList = append(msg.PlayerList, &proto.OnFrame_Player{
+								UserId:     v.GetId(),
+								ActionList: al,
+							})
+							bSend = true
+						}
+					}
 				}
+
 				t.nextFrameId++
-				t.group.Broadcast("onFrame", msg)
+				if bSend {
+					t.group.Broadcast("onFrame", msg)
+				}
 			}
 			break
 		}
@@ -141,20 +161,34 @@ func (t *Table) Run() {
 func (t *Table) ChangeState(state proto.TableState) {
 	t.state = state
 	var roomList []*proto.Room
+	tableInfo := t.GetInfo()
 	switch state {
+	case proto.TableState_CHECK_RES:
+		tableInfo.Res = &proto.TableInfo_Res{
+			Players:   t.res,
+			CountDown: t.resCountDown,
+		}
+		break
+
 	case proto.TableState_SETTLEMENT:
 		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms...)
 		break
 	}
 	t.group.Broadcast("onState", &proto.GameStateResp{
 		State:     proto.GameState_INGAME,
-		TableInfo: t.GetInfo(),
+		TableInfo: tableInfo,
 		RoomList:  roomList,
 	})
 }
 
 func (t *Table) GetClient(uid int64) util.ClientEntity {
 	return t.clients[uid]
+}
+
+func (t *Table) LoadRes(s *session.Session, msg *proto.LoadRes) error {
+	//c := t.GetClient(s.UID())
+	t.res[s.UID()] = msg.Current
+	return s.Response(&proto.LoadResResp{Code: proto.ErrorCode_OK})
 }
 
 func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {

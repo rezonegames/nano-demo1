@@ -17,6 +17,7 @@ type RoomEntity interface {
 	Ready(s *session.Session) error
 	BackToQueue(sList []*session.Session)
 	Entity(tableId string) (TableEntity, error)
+	LoadRes(s *session.Session, msg *proto.LoadRes) error
 }
 
 type TableEntity interface {
@@ -33,6 +34,7 @@ type TableEntity interface {
 	Entity() (WaiterEntity, error)
 	GetClient(uid int64) ClientEntity
 	ChangeState(state proto.TableState)
+	LoadRes(s *session.Session, msg *proto.LoadRes) error
 }
 
 type WaiterEntity interface {

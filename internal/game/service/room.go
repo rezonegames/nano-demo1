@@ -61,6 +61,18 @@ func (r *RoomService) Ready(s *session.Session, _ *proto.Ready) error {
 	return entity.Ready(s)
 }
 
+func (r *RoomService) LoadRes(s *session.Session, msg *proto.LoadRes) error {
+	rid, err := util.GetRoomId(s)
+	if err != nil {
+		return err
+	}
+	entity, err := r.entity(rid)
+	if err != nil {
+		return err
+	}
+	return entity.LoadRes(s, msg)
+}
+
 func (r *RoomService) Cancel(s *session.Session, _ *proto.Cancel) error {
 	rid, err := util.GetRoomId(s)
 	if err != nil {

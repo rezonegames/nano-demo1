@@ -151,6 +151,7 @@ func (r *QuickRoom) Join(s *session.Session) error {
 	util.SetRoomId(s, r.config.RoomId)
 	log.Info("%s addToQueue %d", r.config.RoomId, s.UID())
 	return s.Response(&proto.GameStateResp{
+		Code:  proto.ErrorCode_OK,
 		State: proto.GameState_WAIT,
 	})
 }
@@ -161,6 +162,14 @@ func (r *QuickRoom) Update(s *session.Session, msg *proto.UpdateFrame) error {
 		return err
 	}
 	return entity.Update(s, msg)
+}
+
+func (r *QuickRoom) LoadRes(s *session.Session, msg *proto.LoadRes) error {
+	entity, err := util.GetTable(s, r)
+	if err != nil {
+		return err
+	}
+	return entity.LoadRes(s, msg)
 }
 
 func (r *QuickRoom) ResumeTable(s *session.Session) error {

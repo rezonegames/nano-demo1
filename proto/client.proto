@@ -72,6 +72,14 @@ message LeaveResp {
   ErrorCode code = 1;
 }
 
+message LoadRes {
+  int32 current = 1;
+}
+
+message LoadResResp {
+  ErrorCode code = 1;
+}
+
 // 在每一个步骤，下发游戏状态
 message GameStateResp {
   ErrorCode code = 1;
@@ -99,39 +107,48 @@ message OnFrame {
 
   int64 frameId = 1;
   repeated Player playerList = 2;
+  // 只有第一帧的时候返回500个
+  repeated int32 pieceList = 3;
 }
 
 // 下发桌子信息
 message TableInfo {
 
+  // 断线重连，发送帧数据
   message Frame {
     int64 frameId = 1;
     repeated Action actionList = 2;
   }
 
+  // 桌子上的玩家
   message Player {
     int32 teamId = 1;
     bool end = 2;
     int32 score = 3;
     Profile profile = 4;
-    bool resOK = 5;
-    repeated Frame frameList = 6;
+    repeated Frame frameList = 100;
   }
 
+  // 桌子等待
   message Waiter {
     map<int64, int64> readys = 1;
     int32 countDown = 2;
   }
 
+  // 用于资源检查
+  message Res {
+    map<int64, int32> players = 1;
+    int32 countDown = 2;
+  }
+
   string tableId = 1;
   TableState tableState = 2;
-
   map<int64, Player>  players = 3;
   map<int32, int64>loseTeams = 4;
   Waiter waiter = 5;
-  Room room = 6;
-  // 随机种子
-  int64 randSeed = 7;
-  // 当前的帧号
-  int64 nextFrameId = 8;
+  Res res = 6;
+  Room room = 7;
+  int64 randSeed = 8;
+  int64 nextFrameId = 9;
+
 }

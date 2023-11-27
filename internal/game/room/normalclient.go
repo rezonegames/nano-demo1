@@ -10,13 +10,15 @@ import (
 )
 
 type NormalClient struct {
-	player       *proto.TableInfo_Player
-	cs           *session.Session
-	lastUpdateAt time.Time
-	table        util.TableEntity
-	frames       map[int64][]*proto.Action
-	lock         sync.RWMutex //锁，用于存帧
-	lastFrameId  int64        // 当前客户端到了哪帧
+	player           *proto.TableInfo_Player
+	cs               *session.Session
+	lastUpdateAt     time.Time
+	table            util.TableEntity
+	frames           map[int64][]*proto.Action
+	lock             sync.RWMutex //锁，用于存帧
+	lastFrameId      int64        // 当前客户端到了哪帧
+	speed            int64
+	lastAutoDropTime time.Time
 }
 
 func NewNormalClient(s *session.Session, teamId int32, table util.TableEntity) *NormalClient {
@@ -33,6 +35,7 @@ func NewNormalClient(s *session.Session, teamId int32, table util.TableEntity) *
 		//updatedAt: z.GetTime(),
 		table:  table,
 		frames: make(map[int64][]*proto.Action, 0),
+		speed:  1000,
 	}
 
 	return c
@@ -50,9 +53,17 @@ func (c *NormalClient) SaveFrame(frameId int64, msg *proto.UpdateFrame) {
 	}
 	uf, ok := c.frames[frameId]
 	if !ok {
+		// 如果前一帧玩家没有操作，直接返回删掉，不保存
+		//if preframes, ok := c.frames[frameId-1]; ok {
+		//	if len(preframes) <= 0 {
+		//		delete(c.frames, frameId-1)
+		//	}
+		//}
+
 		uf = make([]*proto.Action, 0)
 	}
 	uf = append(uf, action)
+	c.frames[frameId] = uf
 	c.lastFrameId = frameId
 	c.lastUpdateAt = z.GetTime()
 }
@@ -65,9 +76,19 @@ func (c *NormalClient) GetFrame(frameId int64) []*proto.Action {
 	uf, ok := c.frames[frameId]
 	if ok {
 		al = uf
-	} else {
-		// todo：没结束，并且玩家这一帧没有操作，服务器主动加一帧， 由一个网络好的计算出结果并上传操作记录
 	}
+
+	// 自动下降
+	now := z.GetTime()
+	if now.Sub(c.lastAutoDropTime).Milliseconds() >= c.speed {
+		al = append(al, &proto.Action{
+			Key: proto.ActionType_DROP,
+			Val: 1,
+		})
+		c.frames[frameId] = al
+		c.lastAutoDropTime = now
+	}
+
 	return al
 }
 
