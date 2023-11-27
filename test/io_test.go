@@ -145,8 +145,12 @@ func client(deviceId, rid string) {
 					c.Request("r.ready", &proto2.Ready{}, func(data interface{}) {
 						fmt.Println(deviceId, "ready")
 					})
+					break
+				case proto2.TableState_CHECK_RES:
+					c.Notify("r.loadres", &proto2.LoadRes{Current: 100})
+					break
 				case proto2.TableState_GAMING:
-
+					break
 				case proto2.TableState_SETTLEMENT:
 					state = proto2.GameState_IDLE
 					//fmt.Println(deviceId, "本轮结束")

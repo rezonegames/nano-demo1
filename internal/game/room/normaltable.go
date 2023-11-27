@@ -188,7 +188,8 @@ func (t *Table) GetClient(uid int64) util.ClientEntity {
 func (t *Table) LoadRes(s *session.Session, msg *proto.LoadRes) error {
 	//c := t.GetClient(s.UID())
 	t.res[s.UID()] = msg.Current
-	return s.Response(&proto.LoadResResp{Code: proto.ErrorCode_OK})
+	//return s.Response(&proto.LoadResResp{Code: proto.ErrorCode_OK})
+	return nil
 }
 
 func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {

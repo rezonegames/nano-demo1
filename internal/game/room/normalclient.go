@@ -29,7 +29,6 @@ func NewNormalClient(s *session.Session, teamId int32, table util.TableEntity) *
 			FrameList: make([]*proto.TableInfo_Frame, 0),
 			End:       false,
 			Profile:   util.ConvProfileToProtoProfile(p),
-			ResOK:     false,
 		},
 		cs: s,
 		//updatedAt: z.GetTime(),
