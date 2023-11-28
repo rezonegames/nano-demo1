@@ -58,7 +58,7 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		room:          room,
 		begin:         z.GetTime(),
 		end:           make(chan bool, 0),
-		resCountDown:  10,
+		resCountDown:  100,
 		randSeed:      now,
 		pieceList:     make([]int32, 0),
 		res:           make(map[int64]int32, 0),
@@ -88,22 +88,24 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 }
 
 func (t *Table) BackToTable() {
-	for t.resCountDown > 0 {
-		t.ChangeState(proto.TableState_CHECK_RES)
-		b := true
-		for id, _ := range t.clients {
-			if t.res[id] != 100 {
-				b = false
+	go func() {
+		for t.resCountDown > 0 {
+			t.ChangeState(proto.TableState_CHECK_RES)
+			b := true
+			for id, _ := range t.clients {
+				if t.res[id] != 100 {
+					log.Info("check res not ok %d", id)
+					b = false
+				}
 			}
+			if b || t.resCountDown == 1 {
+				t.ChangeState(proto.TableState_GAMING)
+				return
+			}
+			time.Sleep(time.Second)
+			t.resCountDown--
 		}
-		if b || t.resCountDown == 1 {
-			time.Sleep(2 * time.Second)
-			t.ChangeState(proto.TableState_GAMING)
-			break
-		}
-		time.Sleep(time.Second)
-		t.resCountDown--
-	}
+	}()
 }
 
 func (t *Table) AfterInit() {
@@ -111,15 +113,17 @@ func (t *Table) AfterInit() {
 }
 
 func (t *Table) Run() {
-	ticker := time.NewTicker(200 * time.Millisecond)
+	ticker := time.NewTicker(33 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
+
 		case <-t.end:
 			t.group.Close()
 			for _, v := range t.clients {
 				util.RemoveTable(v.GetSession())
+				util.RemoveRoom(v.GetSession())
 			}
 			return
 
@@ -186,17 +190,24 @@ func (t *Table) GetClient(uid int64) util.ClientEntity {
 }
 
 func (t *Table) LoadRes(s *session.Session, msg *proto.LoadRes) error {
-	//c := t.GetClient(s.UID())
 	t.res[s.UID()] = msg.Current
-	//return s.Response(&proto.LoadResResp{Code: proto.ErrorCode_OK})
+	log.Info("LoadRes down %d", s.UID())
 	return nil
 }
 
 func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {
-	c := t.GetClient(s.UID())
-	if c.IsEnd() || t.state == proto.TableState_SETTLEMENT {
+	if t.state != proto.TableState_GAMING {
 		return nil
 	}
+
+	uid := s.UID()
+	// 有些操作可能是其它客户端上传的
+	who := msg.Action.Who
+	if who != 0 {
+		uid = who
+	}
+
+	c := t.GetClient(uid)
 	c.SaveFrame(t.nextFrameId, msg)
 
 	// 如果已经结束了，判断输赢

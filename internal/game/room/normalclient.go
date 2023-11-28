@@ -45,20 +45,12 @@ func (c *NormalClient) SaveFrame(frameId int64, msg *proto.UpdateFrame) {
 	defer c.lock.Unlock()
 
 	action := msg.Action
-
 	// 判断游戏是否结束，打一个标记
 	if action.Key == proto.ActionType_END {
 		c.player.End = true
 	}
 	uf, ok := c.frames[frameId]
 	if !ok {
-		// 如果前一帧玩家没有操作，直接返回删掉，不保存
-		//if preframes, ok := c.frames[frameId-1]; ok {
-		//	if len(preframes) <= 0 {
-		//		delete(c.frames, frameId-1)
-		//	}
-		//}
-
 		uf = make([]*proto.Action, 0)
 	}
 	uf = append(uf, action)
