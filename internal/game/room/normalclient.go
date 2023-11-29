@@ -73,8 +73,8 @@ func (c *NormalClient) GetFrame(frameId int64) []*proto.Action {
 	now := z.GetTime()
 	if now.Sub(c.lastAutoDropTime).Milliseconds() >= c.speed {
 		al = append(al, &proto.Action{
-			Key: proto.ActionType_DROP,
-			Val: 1,
+			Key:     proto.ActionType_DROP,
+			ValList: []int32{1},
 		})
 		c.frames[frameId] = al
 		c.lastAutoDropTime = now

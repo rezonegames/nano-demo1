@@ -202,7 +202,7 @@ func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {
 
 	uid := s.UID()
 	// 有些操作可能是其它客户端上传的
-	who := msg.Action.Who
+	who := msg.Action.From
 	if who != 0 {
 		uid = who
 	}

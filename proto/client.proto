@@ -92,19 +92,10 @@ message GameStateResp {
 
 message Action {
   ActionType key = 1;
+  repeated int32 valList = 2;
 
-  // 普通动作，只有一个值
-  int32 val = 2;
-
-  // 道具，buff，combo
-  message To {
-    int64 userId = 1;
-    repeated int32 valList = 2;
-  }
-  repeated To toList = 3;
-
-  // 结束，比如玩家已不在线，但是结束了
-  int64 who = 4;
+  int64 to = 3;
+  int64 from = 4;
 }
 
 message UpdateFrame {
