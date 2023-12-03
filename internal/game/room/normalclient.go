@@ -25,16 +25,15 @@ func NewNormalClient(s *session.Session, teamId int32, table util.TableEntity) *
 	p, _ := util.GetProfile(s)
 	c := &NormalClient{
 		player: &proto.TableInfo_Player{
-			TeamId:    teamId,
-			FrameList: make([]*proto.TableInfo_Frame, 0),
-			End:       false,
-			Profile:   util.ConvProfileToProtoProfile(p),
+			TeamId:  teamId,
+			End:     false,
+			Profile: util.ConvProfileToProtoProfile(p),
 		},
 		cs: s,
 		//updatedAt: z.GetTime(),
 		table:  table,
 		frames: make(map[int64][]*proto.Action, 0),
-		speed:  1000,
+		speed:  3000,
 	}
 
 	return c
@@ -64,8 +63,7 @@ func (c *NormalClient) GetFrame(frameId int64) []*proto.Action {
 	defer c.lock.RUnlock()
 
 	al := make([]*proto.Action, 0)
-	uf, ok := c.frames[frameId]
-	if ok {
+	if uf, ok := c.frames[frameId]; ok {
 		al = uf
 	}
 
@@ -80,6 +78,14 @@ func (c *NormalClient) GetFrame(frameId int64) []*proto.Action {
 		c.lastAutoDropTime = now
 	}
 
+	return al
+}
+
+func (c *NormalClient) GetHistoryFrame(frameId int64) []*proto.Action {
+	al := make([]*proto.Action, 0)
+	if uf, ok := c.frames[frameId]; ok {
+		al = uf
+	}
 	return al
 }
 

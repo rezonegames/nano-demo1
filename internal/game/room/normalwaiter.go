@@ -71,7 +71,7 @@ func (w *NormalWaiter) CheckAndDismiss() {
 				}
 			}
 		}
-		w.room.BackToQueue(bList)
+		w.room.BackToWait(bList)
 	} else {
 		w.table.ChangeState(proto.TableState_WAITREADY)
 		return

@@ -4,7 +4,7 @@ import (
 	"github.com/lonng/nano/component"
 	"github.com/lonng/nano/session"
 	"tetris/internal/game/util"
-	"tetris/pkg/z"
+	"tetris/models"
 	"tetris/proto/proto"
 )
 
@@ -33,74 +33,62 @@ func (r *RoomService) AddRoomEntity(roomId string, entity util.RoomEntity) {
 	r.rooms[roomId] = entity
 }
 
-func (r *RoomService) entity(roomId string) (util.RoomEntity, error) {
-	entity, ok := r.rooms[roomId]
-	if !ok {
-		return nil, z.NilError{Msg: roomId}
-	}
-	return entity, nil
+func (r *RoomService) Entity(roomId string) util.RoomEntity {
+	return r.rooms[roomId]
 }
 
 func (r *RoomService) Join(s *session.Session, msg *proto.Join) error {
-	entity, err := r.entity(msg.RoomId)
+	return r.Entity(msg.RoomId).Join(s)
+}
+
+func (r *RoomService) Leave(s *session.Session, _ *proto.Leave) error {
+	rs, err := models.GetRoundSession(s.UID())
 	if err != nil {
 		return err
 	}
-	return entity.Join(s)
+	return r.Entity(rs.RoomId).Leave(s)
+}
+
+func (r *RoomService) getTable(s *session.Session) (util.TableEntity, error) {
+	rs, err := models.GetRoundSession(s.UID())
+	if err != nil {
+		return nil, err
+	}
+	table, err := r.Entity(rs.RoomId).Entity(rs.TableId)
+	if err != nil {
+		return nil, err
+	}
+	return table, nil
 }
 
 func (r *RoomService) Ready(s *session.Session, _ *proto.Ready) error {
-	rid, err := util.GetRoomId(s)
+	table, err := r.getTable(s)
 	if err != nil {
 		return err
 	}
-	entity, err := r.entity(rid)
-	if err != nil {
-		return err
-	}
-	return entity.Ready(s)
+	return table.Ready(s)
 }
 
 func (r *RoomService) LoadRes(s *session.Session, msg *proto.LoadRes) error {
-	rid, err := util.GetRoomId(s)
+	table, err := r.getTable(s)
 	if err != nil {
 		return err
 	}
-	entity, err := r.entity(rid)
-	if err != nil {
-		return err
-	}
-	return entity.LoadRes(s, msg)
-}
-
-func (r *RoomService) Cancel(s *session.Session, _ *proto.Cancel) error {
-	rid, err := util.GetRoomId(s)
-	if err != nil {
-		return s.Response(&proto.CancelResp{Code: proto.ErrorCode_OK})
-	}
-	entity, err := r.entity(rid)
-	if err != nil {
-		return err
-	}
-	return entity.Leave(s)
+	return table.LoadRes(s, msg)
 }
 
 func (r *RoomService) Update(s *session.Session, msg *proto.UpdateFrame) error {
-	rid, err := util.GetRoomId(s)
+	table, err := r.getTable(s)
 	if err != nil {
 		return err
 	}
-	entity, err := r.entity(rid)
-	if err != nil {
-		return err
-	}
-	return entity.Update(s, msg)
+	return table.Update(s, msg)
 }
 
-func (r *RoomService) ResumeTable(s *session.Session, msg *proto.Join) error {
-	entity, err := r.entity(msg.RoomId)
+func (r *RoomService) ResumeTable(s *session.Session, msg *proto.ResumeTable) error {
+	table, err := r.getTable(s)
 	if err != nil {
 		return err
 	}
-	return entity.ResumeTable(s)
+	return table.ResumeTable(s, msg)
 }

@@ -44,37 +44,3 @@ func GetProfile(s *session.Session) (*models.Profile, error) {
 	}
 	return nil, z.NilError{}
 }
-
-// SetTableId 设置桌子
-func SetTableId(s *session.Session, tableId string) {
-	s.Set("tableId", tableId)
-}
-
-func GetTable(s *session.Session, room RoomEntity) (TableEntity, error) {
-	tid := s.String("tableId")
-	if tid == "" {
-		return nil, z.NilError{}
-	}
-	return room.Entity(tid)
-}
-
-func RemoveTable(s *session.Session) {
-	s.Remove("tableId")
-}
-
-// SetRoomId 设置房间
-func SetRoomId(s *session.Session, roomId string) {
-	s.Set("roomId", roomId)
-}
-
-func GetRoomId(s *session.Session) (string, error) {
-	rid := s.String("roomId")
-	if rid == "" {
-		return "", z.NilError{}
-	}
-	return rid, nil
-}
-
-func RemoveRoom(s *session.Session) {
-	s.Remove("roomId")
-}

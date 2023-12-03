@@ -37,22 +37,19 @@ func (g *GateService) offline(s *session.Session) error {
 }
 
 func (g *GateService) online(s *session.Session, uid int64) (*models.Profile, error) {
-	var rid string
+
 	if ps, err := g.group.Member(uid); err == nil {
-		rid, _ = util.GetRoomId(s)
-		log.Info("close 老的连接 %d 房间 %s", ps.UID(), rid)
+		log.Info("close 老的连接 %d", ps.UID())
 		g.group.Leave(ps)
 		ps.Close()
 	}
+
 	log.Info("玩家: %d上线", uid)
 	p, err := models.GetPlayer(uid)
 	if err != nil {
 		return nil, err
 	}
 	util.BindUser(s, p)
-	if rid != "" {
-		util.SetRoomId(s, rid)
-	}
 	return p, g.group.Add(s)
 }
 
@@ -86,12 +83,19 @@ func (g *GateService) Login(s *session.Session, req *proto.LoginToGame) error {
 	if err != nil {
 		return err
 	}
-	rid, _ := util.GetRoomId(s)
+	// 返回所在的房间号和桌子号
+	var roomId, tableId string
+	if rs, err := models.GetRoundSession(uid); err == nil {
+		roomId = rs.RoomId
+		tableId = rs.TableId
+	}
+
 	return s.Response(&proto.LoginToGameResp{
 		Code:     proto.ErrorCode_OK,
 		Profile:  util.ConvProfileToProtoProfile(p),
 		RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms...),
-		RoomId:   rid,
+		RoomId:   roomId,
+		TableId:  tableId,
 	})
 }
 

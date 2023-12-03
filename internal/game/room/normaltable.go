@@ -7,6 +7,7 @@ import (
 	"sync"
 	"tetris/config"
 	"tetris/internal/game/util"
+	"tetris/models"
 	"tetris/pkg/log"
 	"tetris/pkg/z"
 	"tetris/proto/proto"
@@ -33,14 +34,6 @@ type Table struct {
 	pieceList     []int32
 	resCountDown  int32 // 检查资源是否加载成功
 	res           map[int64]int32
-}
-
-func (t *Table) Entity() (util.WaiterEntity, error) {
-	return t.waiter, nil
-}
-
-func (t *Table) Ready(s *session.Session) error {
-	return t.waiter.Ready(s)
 }
 
 func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
@@ -122,8 +115,7 @@ func (t *Table) Run() {
 		case <-t.end:
 			t.group.Close()
 			for _, v := range t.clients {
-				util.RemoveTable(v.GetSession())
-				util.RemoveRoom(v.GetSession())
+				models.RemoveRoundSession(v.GetId())
 			}
 			return
 
@@ -141,8 +133,7 @@ func (t *Table) Run() {
 					msg.PieceList = t.pieceList
 				} else {
 					for _, v := range t.clients {
-						al := v.GetFrame(t.nextFrameId)
-						if len(al) > 0 {
+						if al := v.GetFrame(t.nextFrameId); len(al) > 0 {
 							msg.PlayerList = append(msg.PlayerList, &proto.OnFrame_Player{
 								UserId:     v.GetId(),
 								ActionList: al,
@@ -185,8 +176,16 @@ func (t *Table) ChangeState(state proto.TableState) {
 	})
 }
 
-func (t *Table) GetClient(uid int64) util.ClientEntity {
+func (t *Table) WaiterEntity() util.WaiterEntity {
+	return t.waiter
+}
+
+func (t *Table) Entity(uid int64) util.ClientEntity {
 	return t.clients[uid]
+}
+
+func (t *Table) Ready(s *session.Session) error {
+	return t.waiter.Ready(s)
 }
 
 func (t *Table) LoadRes(s *session.Session, msg *proto.LoadRes) error {
@@ -207,7 +206,7 @@ func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {
 		uid = who
 	}
 
-	c := t.GetClient(uid)
+	c := t.Entity(uid)
 	c.SaveFrame(t.nextFrameId, msg)
 
 	// 如果已经结束了，判断输赢
@@ -247,8 +246,14 @@ func (t *Table) Leave(s *session.Session) {
 }
 
 func (t *Table) Join(s *session.Session, tableId string) error {
-	util.SetTableId(s, tableId)
-	return t.group.Add(s)
+	err := t.group.Add(s)
+	if err != nil {
+		return err
+	}
+	return models.SetRoundSession(s.UID(), &models.RoundSession{
+		RoomId:  t.room.GetConfig().RoomId,
+		TableId: t.tableId,
+	})
 }
 
 func (t *Table) CanDestory() bool {
@@ -276,17 +281,56 @@ func (t *Table) GetInfo() *proto.TableInfo {
 	}
 	rooms := util.ConvRoomListToProtoRoomList(t.room.GetConfig())
 	return &proto.TableInfo{
-		Players:     players,
-		TableId:     t.tableId,
-		TableState:  t.state,
-		LoseTeams:   t.loseTeams,
-		Waiter:      t.waiter.GetInfo(),
-		Room:        rooms[0],
-		NextFrameId: t.nextFrameId,
-		RandSeed:    t.randSeed,
+		Players:    players,
+		TableId:    t.tableId,
+		TableState: t.state,
+		LoseTeams:  t.loseTeams,
+		Waiter:     t.waiter.GetInfo(),
+		Room:       rooms[0],
+		RandSeed:   t.randSeed,
 	}
 }
 
 func (t *Table) GetTableId() string {
 	return t.tableId
+}
+
+func (t *Table) ResumeTable(s *session.Session, msg *proto.ResumeTable) error {
+	t.group.Add(s)
+	frameList := make([]*proto.OnFrame, 0)
+	for i := msg.FrameId; i < t.nextFrameId-1; i++ {
+
+		frame := &proto.OnFrame{
+			FrameId: i,
+		}
+		// 第0帧
+		if i == 0 {
+			frame.PieceList = t.pieceList
+			frameList = append(frameList, frame)
+			continue
+		}
+
+		// 其它帧
+		pl := make([]*proto.OnFrame_Player, 0)
+		for k, v := range t.clients {
+			if al := v.GetHistoryFrame(i); len(al) > 0 {
+				pl = append(pl, &proto.OnFrame_Player{
+					UserId:     k,
+					ActionList: al,
+				})
+			}
+		}
+		if len(pl) > 0 {
+			frame.PlayerList = pl
+			frameList = append(frameList, frame)
+		}
+
+	}
+	tableInfo := t.GetInfo()
+	tableInfo.FrameList = frameList
+	return s.Response(&proto.GameStateResp{
+		Code:      proto.ErrorCode_OK,
+		State:     proto.GameState_INGAME,
+		TableInfo: tableInfo,
+	})
 }

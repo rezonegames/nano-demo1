@@ -11,7 +11,7 @@ type RoundSession struct {
 	TableId string `json:"tid"`
 }
 
-func GetUserRoundSession(uid int64) (*RoundSession, error) {
+func GetRoundSession(uid int64) (*RoundSession, error) {
 	v, err := rclient.Get(fmt.Sprintf("rs:%d", uid)).Result()
 	if err != nil {
 		return nil, err
@@ -24,10 +24,14 @@ func GetUserRoundSession(uid int64) (*RoundSession, error) {
 	return &rs, nil
 }
 
-func SetUserRoundSession(uid int64, rs *RoundSession) error {
+func SetRoundSession(uid int64, rs *RoundSession) error {
 	v, err := json.Marshal(rs)
 	if err != nil {
 		return err
 	}
 	return rclient.Set(fmt.Sprintf("rs:%d", uid), v, 24*time.Hour).Err()
+}
+
+func RemoveRoundSession(uid int64) error {
+	return rclient.Del(fmt.Sprintf("rs:%d", uid)).Err()
 }

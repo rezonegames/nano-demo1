@@ -54,10 +54,10 @@ message JoinResp {
   ErrorCode code = 1;
 }
 
-message Cancel {
+message Leave {
 }
 
-message CancelResp {
+message LeaveResp {
   ErrorCode code = 1;
 }
 
@@ -68,9 +68,6 @@ message ReadyResp {
   ErrorCode code = 1;
 }
 
-message LeaveResp {
-  ErrorCode code = 1;
-}
 
 message LoadRes {
   int32 current = 1;
@@ -79,6 +76,11 @@ message LoadRes {
 message LoadResResp {
   ErrorCode code = 1;
 }
+
+message ResumeTable {
+  int64 frameId = 1;
+}
+
 
 // 在每一个步骤，下发游戏状态
 message GameStateResp {
@@ -117,19 +119,12 @@ message OnFrame {
 // 下发桌子信息
 message TableInfo {
 
-  // 断线重连，发送帧数据
-  message Frame {
-    int64 frameId = 1;
-    repeated Action actionList = 2;
-  }
-
   // 桌子上的玩家
   message Player {
     int32 teamId = 1;
     bool end = 2;
     int32 score = 3;
     Profile profile = 4;
-    repeated Frame frameList = 100;
   }
 
   // 桌子等待
@@ -152,6 +147,5 @@ message TableInfo {
   Res res = 6;
   Room room = 7;
   int64 randSeed = 8;
-  int64 nextFrameId = 9;
-
+  repeated OnFrame frameList = 9;
 }
