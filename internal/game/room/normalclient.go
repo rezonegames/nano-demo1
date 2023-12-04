@@ -39,6 +39,14 @@ func NewNormalClient(s *session.Session, teamId int32, table util.TableEntity) *
 	return c
 }
 
+func (c *NormalClient) SetLastFrame(frameId int64) {
+	c.lastFrameId = frameId
+}
+
+func (c *NormalClient) GetLastFrame() int64 {
+	return c.lastFrameId
+}
+
 func (c *NormalClient) SaveFrame(frameId int64, msg *proto.UpdateFrame) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -54,7 +62,6 @@ func (c *NormalClient) SaveFrame(frameId int64, msg *proto.UpdateFrame) {
 	}
 	uf = append(uf, action)
 	c.frames[frameId] = uf
-	c.lastFrameId = frameId
 	c.lastUpdateAt = z.GetTime()
 }
 
@@ -81,16 +88,12 @@ func (c *NormalClient) GetFrame(frameId int64) []*proto.Action {
 	return al
 }
 
-func (c *NormalClient) GetHistoryFrame(frameId int64) []*proto.Action {
-	al := make([]*proto.Action, 0)
-	if uf, ok := c.frames[frameId]; ok {
-		al = uf
-	}
-	return al
-}
-
 func (c *NormalClient) GetSession() *session.Session {
 	return c.cs
+}
+
+func (c *NormalClient) SetSession(s *session.Session) {
+	c.cs = s
 }
 
 func (c *NormalClient) GetId() int64 {

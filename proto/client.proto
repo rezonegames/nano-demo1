@@ -116,6 +116,10 @@ message OnFrame {
   repeated int32 pieceList = 3;
 }
 
+message OnFrameList {
+  repeated OnFrame frameList = 1;
+}
+
 // 下发桌子信息
 message TableInfo {
 
@@ -147,5 +151,4 @@ message TableInfo {
   Res res = 6;
   Room room = 7;
   int64 randSeed = 8;
-  repeated OnFrame frameList = 9;
 }

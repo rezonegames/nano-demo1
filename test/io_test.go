@@ -112,7 +112,7 @@ func client(deviceId, rid string) {
 	})
 
 	c.On("onFrame", func(data interface{}) {
-		v := proto2.OnFrame{}
+		v := proto2.OnFrameList{}
 		ss.Unmarshal(data.([]byte), &v)
 		fmt.Println(z.ToString(v))
 	})

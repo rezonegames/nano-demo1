@@ -46,11 +46,14 @@ type WaiterEntity interface {
 
 type ClientEntity interface {
 	GetPlayer() *proto.TableInfo_Player
+	GetSession() *session.Session
+	SetSession(s *session.Session)
+	GetId() int64
 	GetTeamId() int32
 	IsEnd() bool
+	// 帧相关的数据
 	SaveFrame(frameId int64, msg *proto.UpdateFrame)
 	GetFrame(frameId int64) []*proto.Action
-	GetHistoryFrame(frameId int64) []*proto.Action
-	GetSession() *session.Session
-	GetId() int64
+	SetLastFrame(frameId int64)
+	GetLastFrame() int64
 }

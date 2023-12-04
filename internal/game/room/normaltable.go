@@ -122,31 +122,51 @@ func (t *Table) Run() {
 		case <-ticker.C:
 			switch t.state {
 			case proto.TableState_GAMING:
-				msg := &proto.OnFrame{
-					FrameId:    t.nextFrameId,
-					PlayerList: make([]*proto.OnFrame_Player, 0),
-				}
 
-				bSend := false
-				if t.nextFrameId == 0 {
-					bSend = true
-					msg.PieceList = t.pieceList
-				} else {
-					for _, v := range t.clients {
-						if al := v.GetFrame(t.nextFrameId); len(al) > 0 {
-							msg.PlayerList = append(msg.PlayerList, &proto.OnFrame_Player{
-								UserId:     v.GetId(),
-								ActionList: al,
-							})
-							bSend = true
+				for _, v := range t.clients {
+
+					// 检查资源
+					if t.res[v.GetId()] != 100 {
+						continue
+					}
+
+					msg := &proto.OnFrameList{FrameList: make([]*proto.OnFrame, 0)}
+					lastFrameId := v.GetLastFrame()
+
+					var i int64
+					for i = lastFrameId; i <= t.nextFrameId; i++ {
+
+						frame := &proto.OnFrame{
+							FrameId:    i,
+							PlayerList: make([]*proto.OnFrame_Player, 0),
+						}
+
+						if i == 0 {
+							frame.PieceList = t.pieceList
+						} else {
+							for _, v := range t.clients {
+								if al := v.GetFrame(i); len(al) > 0 {
+									frame.PlayerList = append(frame.PlayerList, &proto.OnFrame_Player{
+										UserId:     v.GetId(),
+										ActionList: al,
+									})
+								}
+							}
+						}
+						if len(frame.PieceList) > 0 || len(frame.PlayerList) > 0 {
+							msg.FrameList = append(msg.FrameList, frame)
 						}
 					}
-				}
 
-				t.nextFrameId++
-				if bSend {
-					t.group.Broadcast("onFrame", msg)
+					if len(msg.FrameList) > 0 {
+						s := v.GetSession()
+						if err := s.Push("onFrame", msg); err == nil {
+							v.SetLastFrame(i)
+						}
+					}
+
 				}
+				t.nextFrameId++
 			}
 			break
 		}
@@ -243,6 +263,7 @@ func (t *Table) Clear() {
 func (t *Table) Leave(s *session.Session) {
 	t.waiter.Leave(s)
 	t.group.Leave(s)
+	t.res[s.UID()] = 0
 }
 
 func (t *Table) Join(s *session.Session, tableId string) error {
@@ -297,40 +318,12 @@ func (t *Table) GetTableId() string {
 
 func (t *Table) ResumeTable(s *session.Session, msg *proto.ResumeTable) error {
 	t.group.Add(s)
-	frameList := make([]*proto.OnFrame, 0)
-	for i := msg.FrameId; i < t.nextFrameId-1; i++ {
-
-		frame := &proto.OnFrame{
-			FrameId: i,
-		}
-		// 第0帧
-		if i == 0 {
-			frame.PieceList = t.pieceList
-			frameList = append(frameList, frame)
-			continue
-		}
-
-		// 其它帧
-		pl := make([]*proto.OnFrame_Player, 0)
-		for k, v := range t.clients {
-			if al := v.GetHistoryFrame(i); len(al) > 0 {
-				pl = append(pl, &proto.OnFrame_Player{
-					UserId:     k,
-					ActionList: al,
-				})
-			}
-		}
-		if len(pl) > 0 {
-			frame.PlayerList = pl
-			frameList = append(frameList, frame)
-		}
-
-	}
-	tableInfo := t.GetInfo()
-	tableInfo.FrameList = frameList
+	c := t.Entity(s.UID())
+	c.SetLastFrame(msg.FrameId)
+	c.SetSession(s)
 	return s.Response(&proto.GameStateResp{
 		Code:      proto.ErrorCode_OK,
 		State:     proto.GameState_INGAME,
-		TableInfo: tableInfo,
+		TableInfo: t.GetInfo(),
 	})
 }
