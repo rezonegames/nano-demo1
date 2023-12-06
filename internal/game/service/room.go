@@ -44,7 +44,7 @@ func (r *RoomService) Join(s *session.Session, msg *proto.Join) error {
 func (r *RoomService) Leave(s *session.Session, _ *proto.Leave) error {
 	rs, err := models.GetRoundSession(s.UID())
 	if err != nil {
-		return err
+		return s.Response(&proto.LeaveResp{Code: proto.ErrorCode_OK})
 	}
 	return r.Entity(rs.RoomId).Leave(s)
 }
