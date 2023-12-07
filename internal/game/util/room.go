@@ -32,7 +32,7 @@ type TableEntity interface {
 	ResumeTable(s *session.Session, msg *proto.ResumeTable) error
 
 	// 自建桌
-	Leave(s *session.Session)
+	Leave(s *session.Session) error
 	Join(s *session.Session, tableId string) error
 }
 

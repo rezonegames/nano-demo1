@@ -260,10 +260,11 @@ func (t *Table) Clear() {
 	t.end <- true
 }
 
-func (t *Table) Leave(s *session.Session) {
+func (t *Table) Leave(s *session.Session) error {
 	t.waiter.Leave(s)
 	t.group.Leave(s)
 	t.res[s.UID()] = 0
+	return nil
 }
 
 func (t *Table) Join(s *session.Session, tableId string) error {

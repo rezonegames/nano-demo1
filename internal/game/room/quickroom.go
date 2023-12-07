@@ -108,6 +108,14 @@ func (r *QuickRoom) Leave(s *session.Session) error {
 	// 从group离开
 	r.group.Leave(s)
 
+	rs, err := models.GetRoundSession(s.UID())
+	if err != nil {
+		return err
+	}
+	if rs.RoomId != r.config.RoomId {
+		return nil
+	}
+
 	// 如果在队列从队列离开
 	for i, v := range r.queue {
 		if v.ID() == s.ID() {
@@ -116,27 +124,43 @@ func (r *QuickRoom) Leave(s *session.Session) error {
 			break
 		}
 	}
-	if rs, err := models.GetRoundSession(s.UID()); err == nil {
-		if table, err := r.Entity(rs.TableId); err == nil {
-			table.Leave(s)
-		}
-	} else {
-		models.RemoveRoundSession(s.UID())
+
+	if table, err := r.Entity(rs.TableId); err == nil {
+		return table.Leave(s)
 	}
+
+	models.RemoveRoundSession(s.UID())
 	return s.Response(&proto.LeaveResp{Code: proto.ErrorCode_OK})
 }
 
 func (r *QuickRoom) Join(s *session.Session) error {
-	if rs, err := models.GetRoundSession(s.UID()); err == nil && rs.RoomId != r.config.RoomId {
+	if rs, err := models.GetRoundSession(s.UID()); err == nil {
+		if rs.RoomId != r.config.RoomId {
+			return s.Response(&proto.GameStateResp{
+				Code:   proto.ErrorCode_AlreadyInRoom,
+				ErrMsg: fmt.Sprintf(`在另一个房间 %s`, rs.RoomId),
+			})
+		}
+		// 在这个房间里直接返回成功，进入等待页面
 		return s.Response(&proto.GameStateResp{
-			Code:   proto.ErrorCode_AlreadyInRoom,
-			ErrMsg: fmt.Sprintf(`在另一个房间 %s`, rs.RoomId),
+			Code:  proto.ErrorCode_OK,
+			State: proto.GameState_WAIT,
 		})
+
 	}
 	r.lock.Lock()
 	defer r.lock.Unlock()
+	err := models.SetRoundSession(s.UID(), &models.RoundSession{
+		RoomId:  r.config.RoomId,
+		TableId: "",
+	})
+	if err != nil {
+		return err
+	}
+
 	r.queue = append(r.queue, s)
 	r.group.Add(s)
+
 	log.Info("%s addToQueue %d", r.config.RoomId, s.UID())
 	return s.Response(&proto.GameStateResp{
 		Code:  proto.ErrorCode_OK,

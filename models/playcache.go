@@ -29,7 +29,7 @@ func SetRoundSession(uid int64, rs *RoundSession) error {
 	if err != nil {
 		return err
 	}
-	return rclient.Set(fmt.Sprintf("rs:%d", uid), v, 24*time.Hour).Err()
+	return rclient.Set(fmt.Sprintf("rs:%d", uid), v, 10*time.Minute).Err()
 }
 
 func RemoveRoundSession(uid int64) error {
