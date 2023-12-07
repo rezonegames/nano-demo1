@@ -113,10 +113,11 @@ func (t *Table) Run() {
 		select {
 
 		case <-t.end:
-			t.group.Close()
 			for _, v := range t.clients {
 				models.RemoveRoundSession(v.GetId())
 			}
+
+			t.group.Close()
 			return
 
 		case <-ticker.C:
@@ -186,7 +187,7 @@ func (t *Table) ChangeState(state proto.TableState) {
 		break
 
 	case proto.TableState_SETTLEMENT:
-		roomList = util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms...)
+		roomList = util.GetRoomList()
 		break
 	}
 	t.group.Broadcast("onState", &proto.GameStateResp{
@@ -261,10 +262,13 @@ func (t *Table) Clear() {
 }
 
 func (t *Table) Leave(s *session.Session) error {
-	t.waiter.Leave(s)
-	t.group.Leave(s)
-	t.res[s.UID()] = 0
-	return nil
+	switch t.state {
+	case proto.TableState_WAITREADY:
+		t.waiter.Leave(s)
+		models.RemoveRoundSession(s.UID())
+		break
+	}
+	return t.group.Leave(s)
 }
 
 func (t *Table) Join(s *session.Session, tableId string) error {
@@ -301,15 +305,19 @@ func (t *Table) GetInfo() *proto.TableInfo {
 	for k, v := range t.clients {
 		players[k] = v.GetPlayer()
 	}
-	rooms := util.ConvRoomListToProtoRoomList(t.room.GetConfig())
 	return &proto.TableInfo{
 		Players:    players,
 		TableId:    t.tableId,
 		TableState: t.state,
 		LoseTeams:  t.loseTeams,
 		Waiter:     t.waiter.GetInfo(),
-		Room:       rooms[0],
-		RandSeed:   t.randSeed,
+		Room: &proto.Room{
+			RoomId:  t.conf.RoomId,
+			Pvp:     t.conf.Pvp,
+			Name:    t.conf.Name,
+			MinCoin: t.conf.MinCoin,
+		},
+		RandSeed: t.randSeed,
 	}
 }
 
@@ -319,6 +327,7 @@ func (t *Table) GetTableId() string {
 
 func (t *Table) ResumeTable(s *session.Session, msg *proto.ResumeTable) error {
 	t.group.Add(s)
+	t.res[s.UID()] = 0
 	c := t.Entity(s.UID())
 	c.SetLastFrame(msg.FrameId)
 	c.SetSession(s)

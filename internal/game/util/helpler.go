@@ -16,9 +16,9 @@ func ConvProfileToProtoProfile(pp *models.Profile) *proto.Profile {
 	}
 }
 
-func ConvRoomListToProtoRoomList(rl ...*config.Room) []*proto.Room {
+func GetRoomList() []*proto.Room {
 	mm := make([]*proto.Room, 0)
-	for _, v := range rl {
+	for _, v := range config.ServerConfig.Rooms {
 		mm = append(mm, &proto.Room{
 			RoomId:  v.RoomId,
 			Pvp:     v.Pvp,

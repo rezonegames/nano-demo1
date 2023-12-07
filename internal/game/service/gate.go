@@ -4,7 +4,6 @@ import (
 	"github.com/lonng/nano"
 	"github.com/lonng/nano/component"
 	"github.com/lonng/nano/session"
-	"tetris/config"
 	"tetris/internal/game/util"
 	"tetris/models"
 	"tetris/pkg/log"
@@ -73,7 +72,7 @@ func (g *GateService) Register(s *session.Session, req *proto.RegisterGameReq) e
 	return s.Response(&proto.LoginToGameResp{
 		Code:     proto.ErrorCode_OK,
 		Profile:  util.ConvProfileToProtoProfile(p),
-		RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms...),
+		RoomList: util.GetRoomList(),
 	})
 }
 
@@ -93,14 +92,14 @@ func (g *GateService) Login(s *session.Session, req *proto.LoginToGame) error {
 	return s.Response(&proto.LoginToGameResp{
 		Code:     proto.ErrorCode_OK,
 		Profile:  util.ConvProfileToProtoProfile(p),
-		RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms...),
+		RoomList: util.GetRoomList(),
 		RoomId:   roomId,
 		TableId:  tableId,
 	})
 }
 
 func (g *GateService) Rooms(s *session.Session, _ interface{}) error {
-	return s.Response(&proto.GetRoomListResp{RoomList: util.ConvRoomListToProtoRoomList(config.ServerConfig.Rooms...)})
+	return s.Response(&proto.GetRoomListResp{RoomList: util.GetRoomList()})
 }
 
 func (g *GateService) Ping(s *session.Session, _ *proto.Ping) error {

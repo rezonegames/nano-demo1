@@ -164,7 +164,6 @@ func client(deviceId, rid string) {
 }
 
 func TestGame(t *testing.T) {
-
 	//
 	// wait server startup
 	wg := sync.WaitGroup{}

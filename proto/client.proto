@@ -55,6 +55,8 @@ message JoinResp {
 }
 
 message Leave {
+  string roomId = 1;
+  bool force = 2;
 }
 
 message LeaveResp {
@@ -81,6 +83,10 @@ message ResumeTable {
   int64 frameId = 1;
 }
 
+message ResumeRoom {
+
+}
+
 
 // 在每一个步骤，下发游戏状态
 message GameStateResp {
@@ -89,6 +95,7 @@ message GameStateResp {
   GameState state = 3;
   TableInfo tableInfo = 5;
   repeated Room roomList = 6;
+  string roomId = 7;
 }
 
 

@@ -1,7 +1,6 @@
 package room
 
 import (
-	"fmt"
 	"github.com/lonng/nano"
 	"github.com/lonng/nano/session"
 	"sync"
@@ -96,27 +95,21 @@ func (r *QuickRoom) BackToWait(sList []*session.Session) {
 	defer r.lock.Unlock()
 	r.queue = append(r.queue, sList...)
 	for _, v := range sList {
+		models.SetRoundSession(v.UID(), &models.RoundSession{
+			RoomId:  r.config.RoomId,
+			TableId: "",
+		})
 		log.Debug("BackToQueue %d", v.UID())
 		v.Push("onState", &proto.GameStateResp{
 			State: proto.GameState_WAIT,
 		})
 	}
 }
+
 func (r *QuickRoom) Leave(s *session.Session) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	// 从group离开
-	r.group.Leave(s)
 
-	rs, err := models.GetRoundSession(s.UID())
-	if err != nil {
-		return err
-	}
-	if rs.RoomId != r.config.RoomId {
-		return nil
-	}
-
-	// 如果在队列从队列离开
 	for i, v := range r.queue {
 		if v.ID() == s.ID() {
 			r.queue = append(r.queue[:i], r.queue[i+1:]...)
@@ -124,48 +117,29 @@ func (r *QuickRoom) Leave(s *session.Session) error {
 			break
 		}
 	}
+	r.group.Leave(s)
 
-	if table, err := r.Entity(rs.TableId); err == nil {
-		return table.Leave(s)
+	if rs, err := models.GetRoundSession(s.UID()); err == nil {
+		if table, err := r.Entity(rs.TableId); err == nil {
+			return table.Leave(s)
+		}
 	}
-
-	models.RemoveRoundSession(s.UID())
-	return s.Response(&proto.LeaveResp{Code: proto.ErrorCode_OK})
+	log.Info("%d leave %s", s.UID(), r.config.RoomId)
+	return models.RemoveRoundSession(s.UID())
 }
 
 func (r *QuickRoom) Join(s *session.Session) error {
-	if rs, err := models.GetRoundSession(s.UID()); err == nil {
-		if rs.RoomId != r.config.RoomId {
-			return s.Response(&proto.GameStateResp{
-				Code:   proto.ErrorCode_AlreadyInRoom,
-				ErrMsg: fmt.Sprintf(`在另一个房间 %s`, rs.RoomId),
-			})
-		}
-		// 在这个房间里直接返回成功，进入等待页面
-		return s.Response(&proto.GameStateResp{
-			Code:  proto.ErrorCode_OK,
-			State: proto.GameState_WAIT,
-		})
-
-	}
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	err := models.SetRoundSession(s.UID(), &models.RoundSession{
+	if err := models.SetRoundSession(s.UID(), &models.RoundSession{
 		RoomId:  r.config.RoomId,
 		TableId: "",
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
-
 	r.queue = append(r.queue, s)
-	r.group.Add(s)
-
-	log.Info("%s addToQueue %d", r.config.RoomId, s.UID())
-	return s.Response(&proto.GameStateResp{
-		Code:  proto.ErrorCode_OK,
-		State: proto.GameState_WAIT,
-	})
+	log.Info("%d addToQueue %s", s.UID(), r.config.RoomId)
+	return r.group.Add(s)
 }
 
 // CreateTable waiter或者其它的方式创建的房间
