@@ -197,6 +197,10 @@ func (t *Table) ChangeState(state proto.TableState) {
 	})
 }
 
+func (t *Table) Save() {
+
+}
+
 func (t *Table) WaiterEntity() util.WaiterEntity {
 	return t.waiter
 }
@@ -263,6 +267,8 @@ func (t *Table) Clear() {
 
 func (t *Table) Leave(s *session.Session) error {
 	switch t.state {
+	case proto.TableState_STATE_NONE:
+		fallthrough
 	case proto.TableState_WAITREADY:
 		t.waiter.Leave(s)
 		models.RemoveRoundSession(s.UID())
