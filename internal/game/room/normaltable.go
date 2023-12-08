@@ -258,10 +258,8 @@ func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {
 
 func (t *Table) Clear() {
 	for _, v := range t.group.Members() {
-		if t.state == proto.TableState_SETTLEMENT {
-			models.RemoveRoundSession(v)
-		} else {
-			models.RemoveTableId(v)
+		if s, err := t.group.Member(v); err != nil {
+			t.Leave(s)
 		}
 	}
 	t.group.Close()
@@ -275,6 +273,12 @@ func (t *Table) Leave(s *session.Session) error {
 	case proto.TableState_WAITREADY:
 		t.waiter.Leave(s)
 		models.RemoveTableId(s.UID())
+		break
+	case proto.TableState_SETTLEMENT:
+		models.RemoveTableId(s.UID())
+		t.room.Leave(s)
+	case proto.TableState_GAMING:
+		log.Info("%d leave table %s wait back", s.UID(), t.tableId)
 		break
 	}
 	return t.group.Leave(s)
