@@ -113,11 +113,6 @@ func (t *Table) Run() {
 		select {
 
 		case <-t.end:
-			for _, v := range t.clients {
-				models.RemoveRoundSession(v.GetId())
-			}
-
-			t.group.Close()
 			return
 
 		case <-ticker.C:
@@ -262,6 +257,14 @@ func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {
 }
 
 func (t *Table) Clear() {
+	for _, v := range t.group.Members() {
+		if t.state == proto.TableState_SETTLEMENT {
+			models.RemoveRoundSession(v)
+		} else {
+			models.RemoveTableId(v)
+		}
+	}
+	t.group.Close()
 	t.end <- true
 }
 
@@ -271,21 +274,17 @@ func (t *Table) Leave(s *session.Session) error {
 		fallthrough
 	case proto.TableState_WAITREADY:
 		t.waiter.Leave(s)
-		models.RemoveRoundSession(s.UID())
+		models.RemoveTableId(s.UID())
 		break
 	}
 	return t.group.Leave(s)
 }
 
 func (t *Table) Join(s *session.Session, tableId string) error {
-	err := t.group.Add(s)
-	if err != nil {
+	if err := models.SetTableId(s.UID(), tableId); err != nil {
 		return err
 	}
-	return models.SetRoundSession(s.UID(), &models.RoundSession{
-		RoomId:  t.room.GetConfig().RoomId,
-		TableId: t.tableId,
-	})
+	return t.group.Add(s)
 }
 
 func (t *Table) CanDestory() bool {
@@ -299,11 +298,10 @@ func (t *Table) CanDestory() bool {
 		if z.GetTime().Sub(t.begin) > time.Minute {
 			return true
 		}
-		return false
 	default:
-		return t.group.Count() == 0
+
 	}
-	return false
+	return t.group.Count() == 0
 }
 
 func (t *Table) GetInfo() *proto.TableInfo {

@@ -63,12 +63,19 @@ func (w *NormalWaiter) CheckAndDismiss() {
 		log.Debug("Dismiss waiter!!")
 		bList := make([]*session.Session, 0)
 		for _, v := range w.sList {
+			back := false
 			if _, ok := w.readys[v.UID()]; ok {
-				bList = append(bList, v)
+				back = true
 			} else {
 				if hasLeave && w.group.Contains(v.UID()) {
-					bList = append(bList, v)
+					back = true
 				}
+			}
+			w.table.Leave(v)
+			if back {
+				bList = append(bList, v)
+			} else {
+				w.room.Leave(v)
 			}
 		}
 		w.room.BackToWait(bList)

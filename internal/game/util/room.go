@@ -30,8 +30,6 @@ type TableEntity interface {
 	LoadRes(s *session.Session, msg *proto.LoadRes) error
 	Update(s *session.Session, msg *proto.UpdateFrame) error
 	ResumeTable(s *session.Session, msg *proto.ResumeTable) error
-
-	// 自建桌
 	Leave(s *session.Session) error
 	Join(s *session.Session, tableId string) error
 }

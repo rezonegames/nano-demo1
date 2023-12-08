@@ -1,37 +1,64 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
+	"tetris/pkg/z"
 	"time"
 )
 
 type RoundSession struct {
-	RoomId  string `json:"rid"`
-	TableId string `json:"tid"`
+	RoomId  string
+	TableId string
 }
 
-func GetRoundSession(uid int64) (*RoundSession, error) {
-	v, err := rclient.Get(fmt.Sprintf("rs:%d", uid)).Result()
+func ROUND_SESSION_KEY(userId int64) string {
+	return fmt.Sprintf("rs:%d", userId)
+}
+
+func GetRoundSession(userId int64) (*RoundSession, error) {
+	vs, err := rclient.HGetAll(ROUND_SESSION_KEY(userId)).Result()
 	if err != nil {
 		return nil, err
 	}
 	var rs RoundSession
-	err = json.Unmarshal([]byte(v), &rs)
-	if err != nil {
-		return nil, err
+	for k, v := range vs {
+		if k == "roomId" {
+			rs.RoomId = v
+		}
+		if k == "tableId" {
+			rs.TableId = v
+		}
+	}
+	if rs.RoomId == "" {
+		return nil, z.NilError{}
 	}
 	return &rs, nil
 }
 
-func SetRoundSession(uid int64, rs *RoundSession) error {
-	v, err := json.Marshal(rs)
+func SetRoomId(userId int64, roomId string) error {
+	key := ROUND_SESSION_KEY(userId)
+	err := rclient.HSet(key, "roomId", roomId).Err()
 	if err != nil {
 		return err
 	}
-	return rclient.Set(fmt.Sprintf("rs:%d", uid), v, 10*time.Minute).Err()
+	rclient.Expire(key, 20*time.Minute)
+	return nil
 }
 
-func RemoveRoundSession(uid int64) error {
-	return rclient.Del(fmt.Sprintf("rs:%d", uid)).Err()
+func SetTableId(userId int64, tableId string) error {
+	key := ROUND_SESSION_KEY(userId)
+	err := rclient.HSet(key, "tableId", tableId).Err()
+	if err != nil {
+		return err
+	}
+	rclient.Expire(key, 20*time.Minute)
+	return nil
+}
+
+func RemoveTableId(userId int64) {
+	rclient.HDel(ROUND_SESSION_KEY(userId), "tableId")
+}
+
+func RemoveRoundSession(userId int64) {
+	rclient.Del(ROUND_SESSION_KEY(userId))
 }

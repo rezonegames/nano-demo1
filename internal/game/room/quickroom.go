@@ -14,18 +14,19 @@ import (
 )
 
 type QuickRoom struct {
-	group  *nano.Group
-	config *config.Room
-	tables map[string]util.TableEntity
-	lock   sync.RWMutex
-	queue  []*session.Session
+	group   *nano.Group
+	config  *config.Room
+	tables  map[string]util.TableEntity
+	lock    sync.RWMutex
+	waitMap map[int64]int64
 }
 
 func NewQuickRoom(conf *config.Room) *QuickRoom {
 	r := &QuickRoom{
-		group:  nano.NewGroup(conf.RoomId),
-		config: conf,
-		tables: make(map[string]util.TableEntity, 0),
+		group:   nano.NewGroup(conf.RoomId),
+		config:  conf,
+		tables:  make(map[string]util.TableEntity, 0),
+		waitMap: make(map[int64]int64, 0),
 	}
 	log.Info(conf.Dump())
 	return r
@@ -38,11 +39,20 @@ func (r *QuickRoom) AfterInit() {
 		r.lock.Lock()
 		defer r.lock.Unlock()
 	ctrl2:
-		pvp := r.config.Pvp
-		if len(r.queue) >= int(pvp) {
-			vv := r.queue[:pvp]
-			r.queue = r.queue[pvp:]
-			r.WaitReady(vv)
+		pvp := int(r.config.Pvp)
+		if len(r.waitMap) >= pvp {
+			sList := make([]*session.Session, 0)
+			for k, _ := range r.waitMap {
+				s, err := r.group.Member(k)
+				if err == nil {
+					sList = append(sList, s)
+				}
+				delete(r.waitMap, k)
+				if len(sList) >= pvp {
+					break
+				}
+			}
+			r.WaitReady(sList)
 			goto ctrl2
 		}
 	}
@@ -93,12 +103,14 @@ func (r *QuickRoom) WaitReady(sList []*session.Session) {
 func (r *QuickRoom) BackToWait(sList []*session.Session) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	r.queue = append(r.queue, sList...)
 	for _, v := range sList {
-		models.SetRoundSession(v.UID(), &models.RoundSession{
-			RoomId:  r.config.RoomId,
-			TableId: "",
-		})
+		r.waitMap[v.UID()] = z.NowUnix()
+		if err := models.SetRoomId(v.UID(), r.config.RoomId); err != nil {
+			v.Push("onState", &proto.GameStateResp{
+				State: proto.GameState_IDLE,
+			})
+			continue
+		}
 		log.Debug("BackToQueue %d", v.UID())
 		v.Push("onState", &proto.GameStateResp{
 			State: proto.GameState_WAIT,
@@ -109,36 +121,26 @@ func (r *QuickRoom) BackToWait(sList []*session.Session) {
 func (r *QuickRoom) Leave(s *session.Session) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-
-	for i, v := range r.queue {
-		if v.ID() == s.ID() {
-			r.queue = append(r.queue[:i], r.queue[i+1:]...)
-			log.Info("%s player leave queue %d", r.config.RoomId, s.UID())
-			break
-		}
-	}
 	r.group.Leave(s)
-
+	delete(r.waitMap, s.UID())
 	if rs, err := models.GetRoundSession(s.UID()); err == nil {
 		if table, err := r.Entity(rs.TableId); err == nil {
 			return table.Leave(s)
 		}
 	}
 	log.Info("%d leave %s", s.UID(), r.config.RoomId)
-	return models.RemoveRoundSession(s.UID())
+	models.RemoveRoundSession(s.UID())
+	return nil
 }
 
 func (r *QuickRoom) Join(s *session.Session) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	if err := models.SetRoundSession(s.UID(), &models.RoundSession{
-		RoomId:  r.config.RoomId,
-		TableId: "",
-	}); err != nil {
+	if err := models.SetRoomId(s.UID(), r.config.RoomId); err != nil {
 		return err
 	}
-	r.queue = append(r.queue, s)
 	log.Info("%d addToQueue %s", s.UID(), r.config.RoomId)
+	r.waitMap[s.UID()] = z.NowUnixMilli()
 	return r.group.Add(s)
 }
 
