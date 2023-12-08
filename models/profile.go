@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"tetris/pkg/z"
 	"tetris/pkg/zmongo"
+	proto2 "tetris/proto/proto"
 )
 
 type Counter struct {
@@ -15,14 +16,13 @@ type Counter struct {
 }
 
 type Profile struct {
-	Name      string `bson:"name"`
-	Coin      int32  `bson:"coin"`
-	UserId    int64  `bson:"_id"`
-	Pic       string `bson:"pic"`
-	UpdatedAt int64  `bson:"updated_at"`
+	Name   string                    `bson:"name"`
+	UserId int64                     `bson:"_id"`
+	Pic    string                    `bson:"pic"`
+	Items  map[proto2.ItemType]int32 `bson:"items"`
 }
 
-func GetPlayer(userId int64, fields ...string) (*Profile, error) {
+func GetProfile(userId int64, fields ...string) (*Profile, error) {
 	filter := bson.M{
 		"_id": userId,
 	}
@@ -43,23 +43,20 @@ func GetPlayer(userId int64, fields ...string) (*Profile, error) {
 	return p, nil
 }
 
-func NewPlayer(name string, coin int32) *Profile {
-	return &Profile{
-		Name: name,
-		Coin: coin,
-	}
-}
-
-func UpdatePlayer(userId int64, fieldMap map[string]interface{}) error {
+func AddItems(userId int64, itemList []*proto2.Item) error {
 	filter := bson.M{
 		"_id": userId,
 	}
-	fieldMap["updated_at"] = z.NowUnixMilli()
-	err := mclient.UpsertOne(DB_NAME, COL_PROFILE, filter, fieldMap)
-	return err
+	update := bson.D{}
+	for _, item := range itemList {
+		key := fmt.Sprintf("items.%d", item.Key)
+		update = append(update, bson.E{Key: "$inc", Value: bson.D{{key, item.Val}}})
+	}
+	return mclient.UpsertOne(DB_NAME, COL_PROFILE, filter, update)
 }
 
-func CreatePlayer(player *Profile) (int64, error) {
+func CreateProfile(name string, pic string, coin int32) (*Profile, error) {
+	// 取id
 	filter := bson.M{
 		"_id": "_id",
 	}
@@ -76,10 +73,17 @@ func CreatePlayer(player *Profile) (int64, error) {
 	counter := &Counter{}
 	err := mclient.FindOneAndUpdate(DB_NAME, COL_COUNTER, filter, update, counter, opts)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	uid := counter.Count
-	player.UserId = uid
-	_, err = mclient.InsertOne(DB_NAME, COL_PROFILE, player)
-	return uid, err
+
+	// 插之
+	p := &Profile{
+		Name:   name,
+		UserId: counter.Count,
+		Pic:    pic,
+		Items:  make(map[proto2.ItemType]int32, 0),
+	}
+	p.Items[proto2.ItemType_COIN] = coin
+	_, err = mclient.InsertOne(DB_NAME, COL_PROFILE, p)
+	return p, err
 }

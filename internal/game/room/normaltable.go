@@ -183,6 +183,23 @@ func (t *Table) ChangeState(state proto.TableState) {
 
 	case proto.TableState_SETTLEMENT:
 		roomList = util.GetRoomList()
+		playerItems := make(map[int64]*proto.OnItemChange, 0)
+		itemList := make([]*proto.Item, 0)
+		itemList = append(itemList, &proto.Item{
+			Key: proto.ItemType_COIN,
+			Val: 1,
+		})
+		for k, v := range t.clients {
+			if _, ok := t.loseTeams[v.GetTeamId()]; !ok {
+				models.AddItems(k, itemList)
+				playerItems[k] = &proto.OnItemChange{
+					ItemList: itemList,
+					Reason:   "win",
+					To:       k,
+				}
+			}
+		}
+		tableInfo.PlayerItems = playerItems
 		break
 	}
 	t.group.Broadcast("onState", &proto.GameStateResp{
@@ -258,7 +275,7 @@ func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {
 
 func (t *Table) Clear() {
 	for _, v := range t.group.Members() {
-		if s, err := t.group.Member(v); err != nil {
+		if s, err := t.group.Member(v); err == nil {
 			t.Leave(s)
 		}
 	}

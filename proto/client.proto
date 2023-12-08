@@ -15,10 +15,16 @@ message LoginToGame {
   int64 userId = 1;
 }
 
+
+message Item {
+  ItemType key = 1;
+  int32 val = 2;
+}
+
 message Profile {
   string name = 1;
-  int32 coin = 2;
-  int64 userId = 3;
+  int64 userId = 2;
+  repeated Item itemList = 3;
   int64 updatedAt = 10;
 }
 message LoginToGameResp {
@@ -86,7 +92,6 @@ message ResumeTable {
 message ResumeRoom {
 
 }
-
 
 // 在每一个步骤，下发游戏状态
 message GameStateResp {
@@ -158,4 +163,14 @@ message TableInfo {
   Res res = 6;
   Room room = 7;
   int64 randSeed = 8;
+
+  // 结算本局时用的
+  map<int64, OnItemChange> playerItems = 9;
+}
+
+// 道具变化
+message OnItemChange {
+  repeated Item itemList = 1;
+  string reason = 2;
+  int64 To = 3;
 }

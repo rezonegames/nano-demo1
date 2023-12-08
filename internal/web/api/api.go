@@ -66,7 +66,7 @@ func QueryHandler(c *gin.Context) {
 
 	var name string
 	if userId != 0 {
-		if p, err := models.GetPlayer(userId, "name"); err == nil {
+		if p, err := models.GetProfile(userId, "name"); err == nil {
 			name = p.Name
 		}
 	}
@@ -76,6 +76,7 @@ func QueryHandler(c *gin.Context) {
 		zweb.Response(c, &proto.AccountLoginResp{
 			Code: proto.ErrorCode_UnknownError,
 		})
+		return
 	}
 	resp := &proto.AccountLoginResp{
 		Code:   proto.ErrorCode_OK,

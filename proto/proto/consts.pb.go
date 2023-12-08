@@ -358,6 +358,49 @@ func (ActionType) EnumDescriptor() ([]byte, []int) {
 	return file_consts_proto_rawDescGZIP(), []int{5}
 }
 
+type ItemType int32
+
+const (
+	ItemType_COIN ItemType = 0
+)
+
+// Enum value maps for ItemType.
+var (
+	ItemType_name = map[int32]string{
+		0: "COIN",
+	}
+	ItemType_value = map[string]int32{
+		"COIN": 0,
+	}
+)
+
+func (x ItemType) Enum() *ItemType {
+	p := new(ItemType)
+	*p = x
+	return p
+}
+
+func (x ItemType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ItemType) Descriptor() protoreflect.EnumDescriptor {
+	return file_consts_proto_enumTypes[6].Descriptor()
+}
+
+func (ItemType) Type() protoreflect.EnumType {
+	return &file_consts_proto_enumTypes[6]
+}
+
+func (x ItemType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ItemType.Descriptor instead.
+func (ItemType) EnumDescriptor() ([]byte, []int) {
+	return file_consts_proto_rawDescGZIP(), []int{6}
+}
+
 var File_consts_proto protoreflect.FileDescriptor
 
 var file_consts_proto_rawDesc = []byte{
@@ -393,8 +436,10 @@ var file_consts_proto_rawDesc = []byte{
 	0x42, 0x55, 0x46, 0x46, 0x5f, 0x44, 0x49, 0x53, 0x54, 0x55, 0x52, 0x42, 0x10, 0x07, 0x12, 0x10,
 	0x0a, 0x0c, 0x49, 0x54, 0x45, 0x4d, 0x5f, 0x41, 0x44, 0x44, 0x5f, 0x52, 0x4f, 0x57, 0x10, 0x08,
 	0x12, 0x10, 0x0a, 0x0c, 0x49, 0x54, 0x45, 0x4d, 0x5f, 0x44, 0x45, 0x4c, 0x5f, 0x52, 0x4f, 0x57,
-	0x10, 0x09, 0x12, 0x07, 0x0a, 0x03, 0x45, 0x4e, 0x44, 0x10, 0x64, 0x42, 0x08, 0x5a, 0x06, 0x2f,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x10, 0x09, 0x12, 0x07, 0x0a, 0x03, 0x45, 0x4e, 0x44, 0x10, 0x64, 0x2a, 0x14, 0x0a, 0x08, 0x49,
+	0x74, 0x65, 0x6d, 0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x43, 0x4f, 0x49, 0x4e, 0x10,
+	0x00, 0x42, 0x08, 0x5a, 0x06, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -409,7 +454,7 @@ func file_consts_proto_rawDescGZIP() []byte {
 	return file_consts_proto_rawDescData
 }
 
-var file_consts_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_consts_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
 var file_consts_proto_goTypes = []interface{}{
 	(AccountType)(0), // 0: proto.AccountType
 	(GameState)(0),   // 1: proto.GameState
@@ -417,6 +462,7 @@ var file_consts_proto_goTypes = []interface{}{
 	(RoomType)(0),    // 3: proto.RoomType
 	(TableType)(0),   // 4: proto.TableType
 	(ActionType)(0),  // 5: proto.ActionType
+	(ItemType)(0),    // 6: proto.ItemType
 }
 var file_consts_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -436,7 +482,7 @@ func file_consts_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_consts_proto_rawDesc,
-			NumEnums:      6,
+			NumEnums:      7,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

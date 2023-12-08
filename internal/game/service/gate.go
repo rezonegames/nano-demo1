@@ -44,7 +44,7 @@ func (g *GateService) online(s *session.Session, uid int64) (*models.Profile, er
 	}
 
 	log.Info("玩家: %d上线", uid)
-	p, err := models.GetPlayer(uid)
+	p, err := models.GetProfile(uid)
 	if err != nil {
 		return nil, err
 	}
@@ -52,28 +52,22 @@ func (g *GateService) online(s *session.Session, uid int64) (*models.Profile, er
 	return p, g.group.Add(s)
 }
 
-func (g *GateService) Register(s *session.Session, req *proto.RegisterGameReq) error {
-	if req.AccountId == "" {
-		return s.Response(proto.LoginToGameResp{Code: proto.ErrorCode_AccountIdError})
+func (g *GateService) Register(s *session.Session, msg *proto.RegisterGameReq) error {
+	if msg.AccountId == "" {
+		return s.Response(proto.LoginToGameResp{
+			Code: proto.ErrorCode_AccountIdError,
+		})
 	}
-	p := models.NewPlayer(req.Name, 100)
-	uid, err := models.CreatePlayer(p)
+
+	p, err := models.CreateProfile(msg.Name, "", 100)
 	if err != nil {
 		return err
 	}
-	err = models.BindAccount(req.AccountId, uid)
+	err = models.BindAccount(msg.AccountId, p.UserId)
 	if err != nil {
 		return err
 	}
-	_, err = g.online(s, uid)
-	if err != nil {
-		return err
-	}
-	return s.Response(&proto.LoginToGameResp{
-		Code:     proto.ErrorCode_OK,
-		Profile:  util.ConvProfileToProtoProfile(p),
-		RoomList: util.GetRoomList(),
-	})
+	return g.Login(s, &proto.LoginToGame{UserId: p.UserId})
 }
 
 func (g *GateService) Login(s *session.Session, req *proto.LoginToGame) error {

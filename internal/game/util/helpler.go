@@ -8,11 +8,18 @@ import (
 	"tetris/proto/proto"
 )
 
-func ConvProfileToProtoProfile(pp *models.Profile) *proto.Profile {
+func ConvProfileToProtoProfile(p *models.Profile) *proto.Profile {
+	itemList := make([]*proto.Item, 0)
+	for k, v := range p.Items {
+		itemList = append(itemList, &proto.Item{
+			Key: k,
+			Val: v,
+		})
+	}
 	return &proto.Profile{
-		Name:   pp.Name,
-		Coin:   pp.Coin,
-		UserId: pp.UserId,
+		Name:     p.Name,
+		ItemList: itemList,
+		UserId:   p.UserId,
 	}
 }
 

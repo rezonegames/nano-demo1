@@ -58,3 +58,7 @@ enum ActionType {
 
   END = 100;
 }
+
+enum ItemType {
+  COIN = 0;
+}
