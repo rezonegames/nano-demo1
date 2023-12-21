@@ -45,6 +45,7 @@ message Room {
   int32 pvp = 2;
   string name = 3;
   int32 minCoin = 4;
+  string prefab = 5;
 }
 
 message GetRoomListResp {

@@ -174,7 +174,7 @@ func TestGame(t *testing.T) {
 		// 创建客户端
 		go func(index int) {
 			defer wg.Done()
-			client(fmt.Sprintf("robot%d", index), "1")
+			client(fmt.Sprintf("robot%d", index), "5")
 		}(i)
 	}
 

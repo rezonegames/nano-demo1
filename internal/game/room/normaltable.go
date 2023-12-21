@@ -20,7 +20,6 @@ type Table struct {
 	tableId       string
 	conf          *config.Room
 	clients       map[int64]util.ClientEntity
-	loseCount     int32
 	loseTeams     map[int32]int64
 	teamGroupSize int32
 	lock          sync.RWMutex
@@ -45,7 +44,6 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 		tableId:       tableId,
 		clients:       make(map[int64]util.ClientEntity, 0),
 		conf:          conf,
-		loseCount:     0,
 		loseTeams:     make(map[int32]int64, 0),
 		teamGroupSize: conf.Pvp / conf.Divide,
 		room:          room,
@@ -80,25 +78,9 @@ func NewNormalTable(room util.RoomEntity, sList []*session.Session) *Table {
 	return t
 }
 
+// todo：关不掉
 func (t *Table) BackToTable() {
-	go func() {
-		for t.resCountDown > 0 {
-			t.ChangeState(proto.TableState_CHECK_RES)
-			b := true
-			for id, _ := range t.clients {
-				if t.res[id] != 100 {
-					log.Info("check res not ok %d", id)
-					b = false
-				}
-			}
-			if b || t.resCountDown == 1 {
-				t.ChangeState(proto.TableState_GAMING)
-				return
-			}
-			time.Sleep(time.Second)
-			t.resCountDown--
-		}
-	}()
+	t.ChangeState(proto.TableState_CHECK_RES)
 }
 
 func (t *Table) AfterInit() {
@@ -106,14 +88,37 @@ func (t *Table) AfterInit() {
 }
 
 func (t *Table) Run() {
+	// 帧
 	ticker := time.NewTicker(33 * time.Millisecond)
 	defer ticker.Stop()
+
+	// 其它
+	ticker1 := time.NewTicker(1 * time.Second)
+	defer ticker1.Stop()
 
 	for {
 		select {
 
 		case <-t.end:
+			t.resCountDown = 0
 			return
+
+		case <-ticker1.C:
+			switch t.state {
+			case proto.TableState_CHECK_RES:
+				b := true
+				for id, _ := range t.clients {
+					if t.res[id] != 100 {
+						log.Info("check res not ok %d", id)
+						b = false
+					}
+				}
+				if b || t.resCountDown == 1 {
+					t.ChangeState(proto.TableState_GAMING)
+				}
+				t.resCountDown--
+				break
+			}
 
 		case <-ticker.C:
 			switch t.state {
@@ -249,6 +254,7 @@ func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {
 	// 如果已经结束了，判断输赢
 	if c.IsEnd() {
 		isTeamLose := true
+		var loseCount int32
 		teamId := c.GetTeamId()
 		for _, v := range t.clients {
 			if v.GetTeamId() == teamId {
@@ -259,13 +265,15 @@ func (t *Table) Update(s *session.Session, msg *proto.UpdateFrame) error {
 		}
 		// onTeamLose
 		if isTeamLose {
-			t.loseCount++
-			t.loseTeams[teamId] = z.NowUnix()
+			loseCount++
+			if _, ok := t.loseTeams[teamId]; !ok {
+				t.loseTeams[teamId] = z.NowUnix()
+			}
 			t.ChangeState(proto.TableState_GAMING)
 			log.Info("队伍 %d 结束", teamId)
 		}
 
-		if t.loseCount >= t.teamGroupSize-1 {
+		if len(t.loseTeams) >= int(t.teamGroupSize-1) {
 			t.ChangeState(proto.TableState_SETTLEMENT)
 			log.Info("本轮结束 %s", t.tableId)
 		}
@@ -341,6 +349,7 @@ func (t *Table) GetInfo() *proto.TableInfo {
 			Pvp:     t.conf.Pvp,
 			Name:    t.conf.Name,
 			MinCoin: t.conf.MinCoin,
+			Prefab:  t.conf.Prefab,
 		},
 		RandSeed: t.randSeed,
 	}

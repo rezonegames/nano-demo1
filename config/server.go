@@ -39,6 +39,7 @@ type Room struct {
 	MinCoin   int32           `yaml:"minCoin"`
 	RoomType  proto.RoomType  `yaml:"roomType"`
 	TableType proto.TableType `yaml:"tableType"`
+	Prefab    string          `yaml:"prefab"`
 }
 
 func (r *Room) Dump() string {

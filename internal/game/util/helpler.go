@@ -31,6 +31,7 @@ func GetRoomList() []*proto.Room {
 			Pvp:     v.Pvp,
 			Name:    v.Name,
 			MinCoin: v.MinCoin,
+			Prefab:  v.Prefab,
 		})
 
 	}
